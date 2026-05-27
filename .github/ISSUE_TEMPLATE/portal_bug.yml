@@ -1,0 +1,141 @@
+name: Portal bug report
+description: Report a bug in the Connector Namespaces portal (UX, navigation, forms, data display). Auto-filled from the in-product "Report a bug" button.
+title: "[Portal] "
+labels: ["bug", "portal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! If you arrived here from a **Report a bug** button in the portal, several fields below will already be filled in for you (page URL, app version, browser, tenant, subscription). Add a one-line summary and any extra detail you can, then submit.
+
+  - type: input
+    id: summary
+    attributes:
+      label: One-line summary
+      description: What broke, in a sentence.
+      placeholder: e.g. "Connector gateway list shows duplicate rows after delete"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area of the portal
+      default: 6
+      options:
+        - Connector gateways
+        - MCP servers
+        - Connections
+        - Triggers
+        - Settings
+        - Authentication / sign-in
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      default: 1
+      options:
+        - Critical (data loss, blocked sign-in, broken for all users)
+        - High (blocked from completing a key task)
+        - Medium (workaround exists, but annoying)
+        - Low (cosmetic, minor)
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you see that was wrong?
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: false
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: false
+
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL
+      description: Auto-filled from the page you were on (query string and hash stripped).
+      placeholder: https://...
+    validations:
+      required: false
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version / build / commit SHA
+      description: Auto-filled by the portal.
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & version (User-Agent)
+      description: Auto-filled from navigator.userAgent.
+    validations:
+      required: false
+
+  - type: input
+    id: viewport
+    attributes:
+      label: Viewport size & theme
+      placeholder: e.g. 1920x1080 @ dark
+    validations:
+      required: false
+
+  - type: input
+    id: tenant-id
+    attributes:
+      label: Entra tenant ID
+      description: GUID of the signed-in tenant. Used for triage only — no tokens or secrets.
+      placeholder: 00000000-0000-0000-0000-000000000000
+    validations:
+      required: false
+
+  - type: input
+    id: subscription-id
+    attributes:
+      label: Azure subscription ID
+      description: GUID of the currently-selected subscription. Used for triage only.
+      placeholder: 00000000-0000-0000-0000-000000000000
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Anything else
+      description: Screenshots (drag to attach), suspected cause, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confidentiality
+      description: We auto-fill tenant + subscription IDs and a sanitized URL (origin + path, no query string). Please confirm before submitting.
+      options:
+        - label: I confirm this report contains no secrets, tokens, passwords, or customer data beyond the tenant and subscription identifiers shown above.
+          required: true
