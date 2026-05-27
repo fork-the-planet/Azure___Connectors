@@ -145,12 +145,3 @@ body:
       description: Screenshots (drag to attach), suspected cause, etc.
     validations:
       required: false
-
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: Confidentiality
-      description: We auto-fill tenant + subscription IDs and a sanitized URL (origin + path, no query string). Please confirm before submitting.
-      options:
-        - label: I confirm this report contains no secrets, tokens, passwords, or customer data beyond the tenant and subscription identifiers shown above.
-          required: true
