@@ -2,6 +2,8 @@
 
 > Connect your AI agents and workloads to the apps you already use.
 
+**🌐 Portal: [connectors.azure.com](https://connectors.azure.com)**
+
 Connector Namespaces is a Microsoft Azure service that lets you bring connectors into your own namespace and use them with AI agents, Logic Apps, and other workloads — with the security, governance, and lifecycle controls your organization expects.
 
 ## Status
@@ -10,6 +12,7 @@ Connector Namespaces is a Microsoft Azure service that lets you bring connectors
 
 ## Resources
 
+- 🌐 [Portal](https://connectors.azure.com) — the Connector Namespaces home page
 - 📖 [Documentation](https://learn.microsoft.com/azure/) — coming soon
 - 💬 [Discussions](https://github.com/Azure/Connectors/issues) — file an issue to start a conversation
 - 🐛 [Report a bug](https://github.com/Azure/Connectors/issues/new?template=bug_report.yml)
