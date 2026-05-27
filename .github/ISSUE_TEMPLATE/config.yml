@@ -1,5 +1,8 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
+  - name: Discussions
+    url: https://github.com/Azure/Connectors/discussions
+    about: For questions, ideas, and community conversation, please use Discussions.
   - name: Security issue
     url: https://msrc.microsoft.com/create-report
     about: Please report security vulnerabilities to MSRC, NOT as a GitHub issue. See SECURITY.md.
