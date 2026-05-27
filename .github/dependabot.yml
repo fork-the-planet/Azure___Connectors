@@ -1,0 +1,38 @@
+# Dependabot configuration.
+#
+# This file pre-wires dependency updates so they flow automatically as soon as
+# package manifests land in the repo. Update the package-ecosystem entries below
+# when the actual language stack is decided.
+#
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates
+version: 2
+updates:
+  # GitHub Actions used in .github/workflows/*
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore(deps)
+      include: scope
+    labels:
+      - dependencies
+
+  # Uncomment when a package.json lands at the repo root.
+  # - package-ecosystem: npm
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #   open-pull-requests-limit: 10
+  #   commit-message:
+  #     prefix: chore(deps)
+  #     include: scope
+  #   labels:
+  #     - dependencies
+  #   groups:
+  #     all-minor-and-patch:
+  #       update-types: [minor, patch]
