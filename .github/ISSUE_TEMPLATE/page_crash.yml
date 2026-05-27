@@ -21,6 +21,7 @@ body:
     id: crash-type
     attributes:
       label: Type of failure
+      default: 0
       options:
         - Page crash / blank white screen
         - JavaScript exception / unhandled error
@@ -42,13 +43,13 @@ body:
     id: repro-steps
     attributes:
       label: What were you doing when it happened?
-      description: Steps you took just before the failure. If you can reproduce it, list the steps.
+      description: Steps you took just before the failure. If you can reproduce it, list the steps. Optional so an auto-reported crash can be submitted as-is — but reproduction steps from a real person are gold.
       placeholder: |
         1. Opened ...
         2. Clicked ...
         3. Saw ...
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: error-message
@@ -83,6 +84,24 @@ body:
       label: Correlation / request ID
       description: Used by the backend to trace the failure. Auto-filled when available.
       placeholder: e.g. x-ms-request-id, session id, trace id
+    validations:
+      required: false
+
+  - type: input
+    id: tenant-id
+    attributes:
+      label: Entra tenant ID
+      description: GUID of the signed-in tenant. Used for triage only — no tokens or secrets.
+      placeholder: 00000000-0000-0000-0000-000000000000
+    validations:
+      required: false
+
+  - type: input
+    id: subscription-id
+    attributes:
+      label: Azure subscription ID
+      description: GUID of the currently-selected subscription. Used for triage only.
+      placeholder: 00000000-0000-0000-0000-000000000000
     validations:
       required: false
 
@@ -123,6 +142,15 @@ body:
     id: additional
     attributes:
       label: Anything else
-      description: Screenshots (drag to attach), tenant info, suspected cause, etc.
+      description: Screenshots (drag to attach), suspected cause, etc.
     validations:
       required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confidentiality
+      description: We auto-fill tenant + subscription IDs and a sanitized URL (origin + path, no query string). Please confirm before submitting.
+      options:
+        - label: I confirm this report contains no secrets, tokens, passwords, or customer data beyond the tenant and subscription identifiers shown above.
+          required: true
