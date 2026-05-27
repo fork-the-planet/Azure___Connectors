@@ -1,0 +1,147 @@
+name: Page crash / browser failure
+description: Report a page crash, JavaScript exception, or browser-side failure. Designed to be auto-filled by a "Report a problem" button on the website.
+title: "[Page crash] "
+labels: ["bug", "page-crash"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! If you arrived here from a **Report a problem** button in the product, most fields below will already be filled in for you. Just add anything you remember about what you were doing and click **Submit**.
+
+  - type: input
+    id: summary
+    attributes:
+      label: One-line summary
+      description: What broke, in a sentence.
+      placeholder: e.g. "Dashboard went blank after clicking 'Create namespace'"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: crash-type
+    attributes:
+      label: Type of failure
+      default: 0
+      options:
+        - Page crash / blank white screen
+        - JavaScript exception / unhandled error
+        - Network / API failure (4xx, 5xx, timeout)
+        - UI froze / unresponsive
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL where it happened
+      placeholder: https://...
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro-steps
+    attributes:
+      label: What were you doing when it happened?
+      description: Steps you took just before the failure. If you can reproduce it, list the steps. Optional so an auto-reported crash can be submitted as-is — but reproduction steps from a real person are gold.
+      placeholder: |
+        1. Opened ...
+        2. Clicked ...
+        3. Saw ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: error-message
+    attributes:
+      label: Error message / stack trace
+      description: Auto-filled when launched from the product. Otherwise paste here.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: console-logs
+    attributes:
+      label: Console logs (last few entries)
+      description: Auto-filled when launched from the product. Truncated to fit in the URL.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: network-errors
+    attributes:
+      label: Failed network requests
+      description: Auto-filled when launched from the product.
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: correlation-id
+    attributes:
+      label: Correlation / request ID
+      description: Used by the backend to trace the failure. Auto-filled when available.
+      placeholder: e.g. x-ms-request-id, session id, trace id
+    validations:
+      required: false
+
+  - type: input
+    id: tenant-id
+    attributes:
+      label: Entra tenant ID
+      description: GUID of the signed-in tenant. Used for triage only — no tokens or secrets.
+      placeholder: 00000000-0000-0000-0000-000000000000
+    validations:
+      required: false
+
+  - type: input
+    id: subscription-id
+    attributes:
+      label: Azure subscription ID
+      description: GUID of the currently-selected subscription. Used for triage only.
+      placeholder: 00000000-0000-0000-0000-000000000000
+    validations:
+      required: false
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version / build / commit SHA
+      description: Auto-filled by the product.
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & version (User-Agent)
+      description: Auto-filled from navigator.userAgent.
+    validations:
+      required: false
+
+  - type: input
+    id: viewport
+    attributes:
+      label: Viewport size / device
+      placeholder: e.g. 1920x1080 desktop, 390x844 iPhone
+    validations:
+      required: false
+
+  - type: input
+    id: timestamp
+    attributes:
+      label: When did it happen?
+      description: ISO 8601 timestamp. Auto-filled.
+      placeholder: 2026-05-26T16:30:00.000Z
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Anything else
+      description: Screenshots (drag to attach), suspected cause, etc.
+    validations:
+      required: false
