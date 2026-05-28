@@ -1,0 +1,23 @@
+{
+  "name": "Azure-Connectors",
+  "metadata": {
+    "description": "Azure Connectors skills marketplace — self-contained skills for coding agents (Copilot CLI, Claude Code).",
+    "version": "0.1.0"
+  },
+  "owner": {
+    "name": "Microsoft",
+    "url": "https://github.com/Azure/Connectors"
+  },
+  "plugins": [
+    {
+      "name": "azure-connectorgateway",
+      "source": ".",
+      "description": "Azure Connector Gateway — manage gateways, connections, and triggers. Connects external services (Office 365, Teams, Microsoft Forms, SharePoint, OneDrive, GitHub, Azure Blob) to sandbox apps via event-driven triggers or direct API calls using connection runtime URLs.",
+      "version": "0.1.0",
+      "skills": [
+        "./Skills/Sandbox/azure-connectorgateway"
+      ]
+    }
+  ]
+}
+

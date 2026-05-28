@@ -10,6 +10,41 @@ Connector Namespaces is a Microsoft Azure service that lets you bring connectors
 
 🚧 This repository is being set up. Content, samples, and documentation will be added shortly.
 
+## Skills for Coding Agents
+
+This repo doubles as a plugin marketplace for GitHub Copilot CLI and Claude Code.
+Install the skills once and drive Azure Connectors from natural language inside
+your coding agent.
+
+### GitHub Copilot CLI
+
+Quickest install — install directly from this repo:
+
+```bash
+/plugin install Azure/Connectors
+```
+
+Or install via the marketplace (useful when more plugins are added later):
+
+```bash
+/plugin marketplace add Azure/Connectors
+/plugin install azure-connectorgateway@Azure-Connectors
+```
+
+### Claude Code
+
+```bash
+claude plugin add Azure/Connectors
+```
+
+### Available skills
+
+| Skill | Description |
+|-------|-------------|
+| [azure-connectorgateway](Skills/Sandbox/azure-connectorgateway/SKILL.md) | Manage connector gateways, connections, and triggers — wire external services (Office 365, Teams, Forms, SharePoint, OneDrive, GitHub, Azure Blob) to sandbox apps via event-driven triggers or direct API calls using connection runtime URLs. |
+
+See [`Skills/Sandbox/README.md`](Skills/Sandbox/README.md) for more detail.
+
 ## Resources
 
 - 🌐 [Portal](https://connectors.azure.com) — the Connector Namespaces home page
