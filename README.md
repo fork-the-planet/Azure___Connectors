@@ -48,7 +48,7 @@ See [`Skills/Sandbox/README.md`](Skills/Sandbox/README.md) for more detail.
 ## Resources
 
 - 🌐 [Portal](https://connectors.azure.com) — the Connector Namespaces home page
-- 🛠️ [Azure CLI extension](./cli/) — `az connector ...` for managing Connector Namespaces from the command line
+- 🛠️ [Azure CLI extension](./cli/) — `az connector-namespace ...` for managing Connector Namespaces from the command line
 - 📖 [Documentation](https://learn.microsoft.com/azure/) — coming soon
 - 💬 [Discussions](https://github.com/Azure/Connectors/issues) — file an issue to start a conversation
 - 🐛 [Report a bug](https://github.com/Azure/Connectors/issues/new?template=bug_report.yml)
