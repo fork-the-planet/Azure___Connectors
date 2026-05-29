@@ -86,6 +86,123 @@ time** rather than supplied by the LLM at call time. Typical examples:
 > against the connection — exactly like [trigger-setup.md](trigger-setup.md) Step 2.
 > See [dynamic-values.md](dynamic-values.md). **STOP** at each dynamic param for user selection.
 
+## Resolving dynamic parameters for MCP config
+
+**Every connector operation parameter goes through this triage before the PUT.**
+This is the same logic as trigger setup, but applied to *all* operation
+parameters, not just the ones in `notificationDetails`.
+
+### Step 1: Get the connector's Swagger once
+
+```bash
+az rest --method GET \
+  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.Web/locations/{location}/managedApis/{connector}" \
+  --url-parameters "api-version=2016-06-01" "export=true" -o json > $env:TEMP\swagger.json
+```
+
+Find the operation by `operationId` and read its `parameters[]`. For each
+parameter, identify which extension is present.
+
+### Step 2: Triage every parameter
+
+| Parameter has | What to do | Bake into `userParameters[]`? |
+|---|---|---|
+| `x-ms-dynamic-values` | Resolve via [dynamic-values.md](dynamic-values.md) §`x-ms-dynamic-values`. **STOP** for user pick. | Usually yes — IDs are not LLM-discoverable |
+| `x-ms-dynamic-list` | Same as `x-ms-dynamic-values` — resolve, **STOP** for user pick. | Usually yes |
+| `x-ms-dynamic-tree` | Walk the tree via [dynamic-values.md](dynamic-values.md) §`x-ms-dynamic-tree`. **STOP** at each level. | Usually yes — final `value` is opaque (e.g., `%252fShared%2520Documents`) |
+| `x-ms-dynamic-schema` | The parameter's **body shape** depends on a parent param. See §"Dynamic schema" below. | Bake the parent, then decide for the body |
+| `x-ms-dynamic-properties` | Same as `x-ms-dynamic-schema` (older variant). Handle identically. | Same as `x-ms-dynamic-schema` |
+| Static enum | Show choices, **STOP** for user pick. | Bake if the user wants it fixed; leave for LLM otherwise |
+| Free-form with obvious default | Use default, inform user. | Optional |
+| Free-form, no default | Ask the user whether to bake it or let the LLM supply it. | User's choice |
+
+> **The "STOP for user pick" rule applies even for MCP config.** Never invent a
+> team / channel / site / folder / list / mailbox / database ID.
+
+### Step 3: Handle cascading dependencies
+
+Many parameters' `x-ms-dynamic-*` lookups **depend on prior parameters**. You
+must resolve the parents first and use the chosen `value` as input to the
+child lookup. This is identical to the algorithm in
+[dynamic-values.md](dynamic-values.md) §"Step 2: Understand value vs display name"
+and §"x-ms-dynamic-schema".
+
+**Worked example: "Post message to Teams channel"**
+
+The `PostMessageToChannelV3` operation has:
+
+```text
+groupId   ← x-ms-dynamic-values via GetAllTeams
+channelId ← x-ms-dynamic-values via GetChannelsForGroup(groupId)
+message   ← LLM-supplied free-form
+```
+
+To bake `groupId` + `channelId` into `userParameters[]`:
+
+1. Call `dynamicInvoke` → `GetAllTeams`. **STOP** for the user to pick a team.
+   Capture the team's `value-path` field (e.g., `value-path = "id"` → `"abc..."`).
+2. Call `dynamicInvoke` → `GetChannelsForGroup` with `groupId = "abc..."`.
+   **STOP** for the user to pick a channel. Capture `id`.
+3. Build the MCP config:
+   ```json
+   "userParameters": [
+     { "name": "groupId",   "displayName": "Team",    "value": "abc...", "displayValue": "Engineering" },
+     { "name": "channelId", "displayName": "Channel", "value": "19:def...@thread.tacv2", "displayValue": "general" }
+   ]
+   ```
+4. Leave `message` out of `userParameters[]` so the LLM supplies it per tool call.
+
+> **Always pass the stored `value` (from `value-path`), not the display name
+> (from `value-title`)**, as input to child lookups. The connector rejects
+> display names with `NotFound` or empty results.
+
+### Step 4: Dynamic schema (body shape)
+
+When an operation's body parameter uses `x-ms-dynamic-schema` (e.g.,
+"Create item in SharePoint list" — the body fields are the list's columns),
+the schema can only be resolved after the parent parameters (`dataset`,
+`table`) are known.
+
+**Recommendation:** if a tool uses `x-ms-dynamic-schema` for its body, **always
+bake the dependent parents** (`dataset`, `table`, ...) as `userParameters[]`
+so the LLM gets a stable, concrete tool shape. Without that, the LLM cannot
+know what fields it's allowed to send.
+
+Resolve the schema once at config time, using
+[dynamic-values.md](dynamic-values.md) §"x-ms-dynamic-schema" algorithm:
+
+```bash
+# Once dataset + table are chosen, fetch the schema:
+az rest --method POST \
+  --url ".../connectorGateways/{gw}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" \
+  --body "@$schemaBody"
+# (request body uses GetTable's operationId per the operation's
+#  x-ms-dynamic-schema.operationId, with the resolved dataset + table)
+```
+
+The returned JSON schema is what the LLM will see as the tool's input shape
+for the body — confirm with the user before saving the MCP config.
+
+### Step 5: LLM-facing input schema
+
+Parameters **not** in `userParameters[]` become LLM-supplied inputs. The
+gateway derives the MCP tool's input schema from those remaining parameters
+in the operation's Swagger. So:
+
+- Static parameters → straightforward type in the MCP tool input schema
+- `x-ms-dynamic-values` / `-list` left LLM-supplied → the LLM must guess
+  valid IDs; **this rarely works**. Prefer baking these as `userParameters[]`.
+- `x-ms-dynamic-tree` left LLM-supplied → almost never works (opaque tokens).
+  Bake it.
+- `x-ms-dynamic-schema` body left LLM-supplied with parents un-baked → the
+  body schema is unknown until tool-call time; LLM tool input becomes generic
+  `object`. **Bake the parents.**
+
+**Rule of thumb:** if a parameter's value space is "anything the user might
+imagine" (a subject line, a message body, an email address), leave it for the
+LLM. If it's "one of an enumerable, connector-supplied set" (team, channel,
+site, list, folder, file, database, table), **bake it via dynamic resolution**.
+
 ## PUT the config
 
 ```powershell

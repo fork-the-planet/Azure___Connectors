@@ -213,10 +213,14 @@ Ask the user:
    ```
    Each MCP "tool" maps to one connector operation under one connection.
 
-2. **For each operation, collect `userParameters`.** These are the **fixed inputs**
-   baked into the MCP config (e.g., "always send to channel X"). LLM-supplied
-   inputs are the operation's other parameters. Resolve `x-ms-dynamic-*` exactly
-   like trigger setup — see [dynamic-values.md](references/dynamic-values.md). **STOP at every dynamic param.**
+2. **For each operation, triage every parameter** through dynamic resolution before deciding what to bake. The four extension kinds (`x-ms-dynamic-values`, `-list`, `-tree`, `-schema`) **all apply** here, exactly like trigger setup. For each:
+   - `x-ms-dynamic-values` / `-list` → `dynamicInvoke` the lookup operation, **STOP** for user pick, store the `value-path` value.
+   - `x-ms-dynamic-tree` → walk the tree (root → children), **STOP** at each level, store the final opaque token.
+   - `x-ms-dynamic-schema` / `-properties` → resolve schema after parents are picked (the body shape comes from the connector). Bake the parents so the LLM gets a stable tool shape.
+   - Cascading params (e.g., channel depends on team): always resolve parents first; pass their `value` (not display name) to child lookups.
+   - See [mcp-server-config.md](references/mcp-server-config.md) §"Resolving dynamic parameters for MCP config" and [dynamic-values.md](references/dynamic-values.md).
+   
+   Decide for each: bake into `userParameters[]` (fixed at config time) or leave for the LLM (free-form fields like subject/body). **Rule of thumb:** if the value space is enumerable connector data (team, channel, site, list, folder, file, db, table), **bake it**; if it's "anything the user might imagine" (subject, message body, email address), leave it for the LLM. **STOP at every dynamic param.**
 
 3. **PUT the MCP server config.** Body shape:
    ```json
