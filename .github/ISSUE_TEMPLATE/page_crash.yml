@@ -29,7 +29,7 @@ body:
         - UI froze / unresponsive
         - Other
     validations:
-      required: true
+      required: false
 
   - type: input
     id: page-url
