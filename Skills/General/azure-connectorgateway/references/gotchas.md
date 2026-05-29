@@ -1,0 +1,30 @@
+# Gotchas & Troubleshooting
+
+Common issues for the generic connector-gateway skill and their fixes.
+
+| Issue | Solution |
+|-------|----------|
+| **Trigger not firing** (connector event) | Make sure `gateway-acl` exists on the connection (gateway MI → connection). Without it the subscription silently fails. See [trigger-setup.md](trigger-setup.md) Step 4. |
+| **Trigger state is `Enabled` but no runs** | Check `triggerConfigs/{name}/runs` for errors. Most commonly: the gateway couldn't reach `callbackUrl` (4xx/5xx from your endpoint) or authentication mismatch. |
+| **Trigger run shows `Unauthorized` from callback** | Your callback URL's auth doesn't match `notificationDetails.authentication`. Re-check the type/audience/secret. See [notification-authentication.md](notification-authentication.md). |
+| **`ManagedServiceIdentity` callback fails with "audience required"** | `audience` is mandatory on MSI auth. Use the API's resource/audience URI. |
+| **`ManagedServiceIdentity` callback fails with "identity not configured"** | The requested MI isn't attached to the gateway. Either omit `identity` (uses SystemAssigned) or attach the UAMI to the gateway. See [notification-authentication.md](notification-authentication.md). |
+| **Connection stuck in `Error` / `Unauthenticated`** | This is the normal pre-consent state. Run [consent.md](consent.md) and have the user complete the browser flow. If still stuck after consent, regenerate the consent link — do NOT retry with different body formats. |
+| **Consent redirect shows error** | Body MUST be `{"parameters":[{"objectId":"...","tenantId":"...","redirectUrl":"https://microsoft.com","parameterName":"token"}]}`. Get `objectId`/`tenantId` from the connection's `properties.createdBy`. Always open with `Start-Process`. |
+| **`dynamicInvoke` 400: `parameters` not valid** | Use `{"request": {"method":..., "path":...}}` format. The older `{"parameters": {"operationId":...}}` format is not supported. |
+| **`dynamicInvoke` 400: `Content-*` headers** | Do NOT include `Content-Type` (or any other `Content-*` header) inside the inner `request.headers`. |
+| **`dynamicInvoke` returns `NotFound`** | Wrong path: did you strip `/{connectionId}` from the Swagger path? Or the operation expects path-segment parameters that you put in `queries`. Re-check the Swagger `in:` markers. |
+| **`dynamicInvoke` browse calls fail with mangled JSON** | IDs often contain `!`, `'`, spaces. Always use `@$tmpFile` for the body and `[System.Uri]::EscapeDataString()` for URL path segments. |
+| **`az rest --body` "Unsupported Media Type"** | Inline JSON strings get mangled by PowerShell quoting. Always use `@$tmpFile`: write the body to a temp file and pass `--body "@$tmpFile"`. |
+| **Swagger paths include `/{connectionId}/...`** | Strip the prefix when calling `dynamicInvoke` — the connection context is already set by the endpoint. |
+| **`x-ms-dynamic-*` resolution returns empty** | The display value you used for the prior parameter wasn't the actual value. Always pass the **stored value** (from `value-path`), not the display name (from `value-title`). See [dynamic-values.md](dynamic-values.md). |
+| **MCP tool calls 403 from MCP client** | The caller's objectId isn't in the MCP server config's access policies. Add an access policy on `mcpServerConfigs/{name}/accessPolicies/{policy}`. See [mcp-server-config.md](mcp-server-config.md). |
+| **MCP tool calls 401** | Underlying connection isn't consented or the consent expired. Re-run [consent.md](consent.md). |
+| **`resourceAuth` rejected on `ManagedMcpServer`** | `resourceAuth` is only valid on `HostedMcpServer`. Remove it. |
+| **MCP `userParameters[].value` is the display name** | The connector rejects it because it expects the underlying ID/key. Re-resolve via `dynamicInvoke` and store the `value-path` field. |
+| **`callbackTarget` rejected** | That field does not exist in the schema. Use `notificationDetails.callbackUrl`. |
+| **PowerShell `ConvertFrom-Json` fails on Swagger** | `az rest ... export=true` returns content that piping breaks. Always `-o json > $env:TEMP\swagger.json` first, then read the file. |
+| **Cleanup order** | Delete trigger configs and MCP server configs → delete access policies on connections → delete connections → delete gateway. Trigger configs hold subscriptions, so delete them first to avoid orphan webhooks. |
+| **403 from `az rest` against ARM** | Your Azure CLI identity doesn't have RBAC on the resource group / gateway. You need at least `Microsoft.Web/connectorGateways/*` (Contributor or a custom role). |
+| **PUT to gateway fails with "region not supported"** | Try another region. Common supported regions: `eastus`, `eastus2`, `westus`, `westus2`, `westus3`, `northeurope`, `westeurope`, `australiaeast`, `southeastasia`, `brazilsouth`. |
+| **Provider not registered** | `az provider register --namespace Microsoft.Web` and wait for `Registered` state. |
