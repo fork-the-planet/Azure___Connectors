@@ -114,7 +114,7 @@ az rest --method POST \
 
 → **More examples:** See [runtime-url-examples.md](runtime-url-examples.md)
 
-## 4. If running from a sandbox — ACL + egress
+## 4. If running from a sandbox — ACLs + gatewayConnections wiring
 
 Run these in parallel:
 ```bash
@@ -124,17 +124,18 @@ az rest --method GET \
   --query "properties.connectionRuntimeUrl" -o tsv
 ```
 
-**Critical egress values:**
-- Token resource: `https://management.core.windows.net/` (NOT `management.azure.com`)
-- Header format: `"Bearer {value}"` (NOT `{token}`)
-- Sandbox MUST be running before setting egress
-- One rule covers all connections on same gateway host
+**Wiring checklist (declarative — gatewayConnections):**
+- Sandbox-group has SystemAssigned MI (`aca sandboxgroup identity assign --name {sg} --system-assigned`)
+- `sandbox-acl` access policy on the connection (sandbox-group MI → connection)
+- Sandbox-group `properties.gatewayConnections[]` PATCH'd with `{resourceId, connectionRuntimeUrl, authentication.type=SystemAssignedManagedIdentity}` (GET-merge-PATCH; don't clobber existing entries)
+- Each sandbox is created with `gatewayConnections: [{resourceId}]` in its data-plane PUT body
+- Handler calls runtime URL with **no auth header** — the platform proxy injects Bearer automatically
 
-→ **Full egress setup code + troubleshooting:** See [egress-setup.md](egress-setup.md)
+→ **Full setup code + troubleshooting:** See [gateway-connections.md](gateway-connections.md)
 → **Runtime URL examples for sandbox apps:** See [runtime-url-examples.md](runtime-url-examples.md)
 
 **Two auth patterns:**
 | Context | Pattern |
 |---------|---------|
 | **Setup** (dynamic values, testing) | `dynamicInvoke` via ARM (uses Azure CLI identity) |
-| **Sandbox runtime** (deployed handler) | `connectionRuntimeUrl` + egress transform (uses sandbox MI) |
+| **Sandbox runtime** (deployed handler) | `connectionRuntimeUrl` + gatewayConnections wiring (platform proxy injects Bearer from sandbox-group MI) |

@@ -7,7 +7,8 @@ How to call connector operations directly from a sandbox using connection runtim
 ```
 {HTTP_METHOD} {connectionRuntimeUrl}/{operation_path}?{query_params}
 Content-Type: application/json
-(Authorization is injected by egress — do NOT set it yourself)
+(Authorization is injected by the platform proxy — do NOT set it yourself.
+ See gateway-connections.md for the wiring.)
 ```
 
 ## How to map Swagger operations to runtime URL calls
@@ -25,7 +26,7 @@ Content-Type: application/json
    | `path` | Substitute into URL path (e.g., `/teams/{teamId}/channels` → `/teams/abc123/channels`) |
    | `query` | Append as query string: `?folderPath=/&name=test.txt` |
    | `body` | Send as JSON request body |
-   | `header` | Add as HTTP header (but NOT `Authorization` — egress handles that) |
+   | `header` | Add as HTTP header (but NOT `Authorization` — the platform proxy handles that via gatewayConnections) |
 
 ## Teams — Post message to channel
 

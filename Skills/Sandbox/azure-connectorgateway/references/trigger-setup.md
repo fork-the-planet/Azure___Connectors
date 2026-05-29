@@ -60,7 +60,8 @@ aca sandboxgroup show -g {rg} -n {sg} --query "identity.principalId" -o tsv
 ```
 If `principalId` is empty/null, enable MI:
 ```bash
-aca sandboxgroup update -g {rg} -n {sg} --identity SystemAssigned
+aca sandboxgroup identity assign --name {sg} --system-assigned
+# Verify: aca sandboxgroup identity show --name {sg}
 ```
 
 **If new:** Ask for a name + location, then create:
@@ -69,15 +70,23 @@ aca sandboxgroup update -g {rg} -n {sg} --identity SystemAssigned
 aca sandboxgroup create -g {rg} -n {sg} -l {location}
 
 # Enable system-assigned managed identity (create doesn't support --identity)
-aca sandboxgroup update -g {rg} -n {sg} --identity SystemAssigned
-# Verify: aca sandboxgroup show -g {rg} -n {sg} --query "identity.principalId"
+aca sandboxgroup identity assign --name {sg} --system-assigned
+# Verify: aca sandboxgroup identity show --name {sg}
 ```
 
 > **⚠️ New groups take 5–20 min to propagate to the data plane.** Prefer reusing existing groups when possible.
 
-**Then create a sandbox** (in existing or new group):
+**Then create a sandbox** (in existing or new group). If the handler will call a
+**connection runtime URL** from inside the sandbox, you must include the
+connection's `resourceId` in the sandbox's `gatewayConnections[]` at create
+time (the `aca` CLI doesn't yet expose `--gateway-connection`; hit the
+data-plane PUT directly via `az rest`). See
+[gateway-connections.md](gateway-connections.md) Step 5 for the canonical body.
+
+If the handler does **not** call any runtime URL (e.g. just runs a local
+script), `aca sandbox create` is fine:
+
 ```bash
-# Create sandbox (retry with backoff if SandboxGroupNotFound)
 aca sandbox create -g {rg} --group {sg} --disk ubuntu
 
 # Wait for Running state
@@ -149,30 +158,63 @@ Remove-Item $tmpBody
 > **⚠️ Always use `@$tmpFile` pattern for `az rest --body`** — inline JSON strings
 > cause "Unsupported Media Type" errors due to PowerShell string quoting issues.
 
-### Access policy (gateway MI → connection)
+### Access policies (gateway MI → connection [+ sandbox-group MI → connection])
 
 ```powershell
-$body = @{
-  location = "{location}"
-  properties = @{
-    principal = @{
-      type = "ActiveDirectory"
-      identity = @{ objectId = "{gw_principal_id}"; tenantId = "{tenant_id}" }
-    }
-  }
-} | ConvertTo-Json -Depth 5 -Compress
+function New-ConnectionAcl {
+    param($AclName, $PrincipalId)
+    $body = @{
+        location = "{location}"
+        properties = @{
+            principal = @{
+                type = "ActiveDirectory"
+                identity = @{ objectId = $PrincipalId; tenantId = "{tenant_id}" }
+            }
+        }
+    } | ConvertTo-Json -Depth 5 -Compress
+    $tmp = New-TemporaryFile; Set-Content $tmp $body
+    az rest --method PUT `
+      --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/{conn}/accessPolicies/$AclName?api-version=2026-05-01-preview" `
+      --body "@$tmp"
+    Remove-Item $tmp
+}
 
-az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/{conn}/accessPolicies/gateway-acl?api-version=2026-05-01-preview" `
-  --body $body
+# Required for the trigger to subscribe to connector events:
+New-ConnectionAcl -AclName "gateway-acl" -PrincipalId "{gw_principal_id}"
+
+# Required ONLY if the handler also calls the connection runtime URL
+# (i.e. the handler does direct API calls on the connection). Pair with the
+# sandbox-group `gatewayConnections[]` wiring in gateway-connections.md.
+New-ConnectionAcl -AclName "sandbox-acl" -PrincipalId "{sg_principal_id}"
 ```
+
+→ **Full sandbox-runtime auth wiring** (sandbox-group `gatewayConnections[]` PATCH + per-sandbox PUT body): [gateway-connections.md](gateway-connections.md)
 
 ### Port auth (InvokePort only)
 
-```bash
-aca sandbox port add -g {rg} --group {sandbox_group} --id {sandbox_id} --port 5000 \
-  --entra-id-object-ids {gw_principal_id}
+The `aca sandbox port add` CLI does **not** yet expose
+`--entra-id-object-ids`, so hit the data-plane `POST /ports/add` directly
+to set `auth.entraId` and `activationMode=OnDemand` (the latter lets the
+proxy resume a suspended sandbox when the webhook arrives):
+
+```powershell
+$body = @{
+  port = 5000
+  auth = @{ entraId = @{ enabled = $true; objectIds = @("{gw_principal_id}"); tenantIds = @("{tenant_id}"); emails = @("{your_email}") } }
+  activationMode = "OnDemand"
+} | ConvertTo-Json -Depth 6 -Compress
+$tmp = New-TemporaryFile; Set-Content $tmp $body
+az rest --resource "https://dynamicsessions.io" --method POST `
+  --url "https://management.{region}.azuredevcompute.io/subscriptions/{sub}/resourceGroups/{rg}/sandboxGroups/{sg}/sandboxes/{sandbox_id}/ports/add?api-version=2026-02-01-preview" `
+  --headers "Content-Type=application/json" --body "@$tmp"
+Remove-Item $tmp
+# Response includes "ports":[{"port":5000,"url":"https://{sandbox_id}--5000.{region}.adcproxy.io"}]
+# Callback URL = "$url/webhook"
 ```
+
+> **⚠️ Use the regional data-plane host** `management.{region}.azuredevcompute.io`
+> (e.g. `management.eastus2.azuredevcompute.io`) — the unregional host returns 404.
+> The `emails` array is optional but useful if you want to hit `/health` from a browser yourself.
 
 ### Role assignment (ShellCommand/ExecuteCommand only)
 

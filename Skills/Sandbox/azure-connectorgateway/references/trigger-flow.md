@@ -60,9 +60,13 @@ Then generate consent link and open in browser — see **SKILL.md Step 3** for t
 aca sandboxgroup create -g my-rg -n my-sg -l eastus2
 
 # Enable system-assigned managed identity (create doesn't support --identity)
-aca sandboxgroup update -g my-rg -n my-sg --identity SystemAssigned
+aca sandboxgroup identity assign --name my-sg --system-assigned
 
 # Create sandbox
+# NOTE: If the handler will call a connection runtime URL, include the
+# connection's resourceId in `gatewayConnections[]` at create time —
+# see references/gateway-connections.md (the aca CLI does not yet expose
+# --gateway-connection; use `az rest` against the data plane).
 aca sandbox create -g my-rg --group my-sg --disk ubuntu
 
 # Install Python if handler uses it (ubuntu image has no Python pre-installed)
@@ -170,8 +174,9 @@ objectIds to authenticate. The proxy URL uses `audience: https://auth.adcproxy.i
 
 | Issue | Solution |
 |-------|----------|
-| Trigger not firing | Ensure access policy is created granting gateway MI access to connection |
-| Gateway can't subscribe | Create an access policy for the gateway MI on the connection |
+| Trigger not firing | Ensure `gateway-acl` access policy is created granting gateway MI access to connection |
+| Gateway can't subscribe | Create a `gateway-acl` access policy for the gateway MI on the connection |
+| Handler runtime-URL calls 401/403 | Ensure (a) sandbox-group has SystemAssigned MI, (b) `sandbox-acl` exists on the connection, (c) sandbox-group `properties.gatewayConnections[]` references this connection, (d) the sandbox was created with `gatewayConnections: [{resourceId}]` in its data-plane PUT body. See [gateway-connections.md](gateway-connections.md) |
 | Sandbox not responding | Ensure sandbox is Running; for ShellCommand, use `activationMode: OnDemand` |
 | Port auth failure | Add gateway principalId to port's `auth.entraId.objectIds` on the sandbox |
 | Parameters rejected | Get exact parameter names from the connector Swagger (`managedApis/{connector}?export=true`) |

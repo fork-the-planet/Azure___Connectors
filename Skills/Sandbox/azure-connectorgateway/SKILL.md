@@ -50,11 +50,12 @@ to sandbox apps via direct API calls or event-driven triggers.
 | **Trigger body schema** | Uses `metadata` + `notificationDetails` (callbackUrl/body/auth). `operationName`+`parameters` at properties root. `callbackTarget` does NOT exist. See Step 5B template. |
 | **Handler deploy** | Write to local file → `aca sandbox fs write`. Never inline Python in PowerShell. |
 | **SSL/stderr** | `REQUESTS_CA_BUNDLE` preferred. `verify=False` needs `disable_warnings()`. stderr = trigger failure. See [handler-guide.md](references/handler-guide.md). |
-| **Parallel execution** | Run independent ops (connections, ACLs, egress, dynamic values) as parallel tool calls. |
+| **Parallel execution** | Run independent ops (connections, ACLs, gatewayConnections wiring, dynamic values) as parallel tool calls. |
+| **Sandbox ↔ connection wiring** | Use the declarative **gatewayConnections** pattern (SG-level PATCH + per-sandbox PUT body). See [gateway-connections.md](references/gateway-connections.md). |
 
 **When to STOP and ask the user:** Any parameter with dynamic values (teams, channels, folders, sites, lists), choosing integration pattern, OAuth consent. **You must NEVER skip this — always fetch the list and present it.**
 
-**When to EXECUTE immediately:** creating gateways/connections/triggers/policies, deploying handlers, setting egress, installing deps.
+**When to EXECUTE immediately:** creating gateways/connections/triggers/policies, wiring gatewayConnections, deploying handlers, installing deps.
 
 ### Step 0: Prerequisites & Azure context
 
@@ -176,7 +177,7 @@ az rest --method GET \
 ### Step 4: Choose integration pattern
 Ask the user:
 - **A) Direct API calls** — call connector operations on demand via `dynamicInvoke`
-  (send email, read list, create file). If deploying to sandbox, also sets up egress.
+  (send email, read list, create file). If deploying to sandbox, also wires the connection to the sandbox group + sandbox via `gatewayConnections[]`.
 - **B) Event-driven triggers** — gateway pushes notifications to sandbox when
   events happen. Handler can then use direct API calls for additional actions.
 
@@ -195,7 +196,7 @@ Ask the user:
 2. Call `dynamicInvoke` on the connection with the resolved `method` + `path`
 3. If parameters have `x-ms-dynamic-*` → resolve via dynamicInvoke, show display names to user, store values
 
-**If deploying to sandbox:** Set up ACL + egress → [egress-setup.md](references/egress-setup.md)
+**If deploying to sandbox:** Wire the connection declaratively (sandbox-group `gatewayConnections[]` PATCH + per-sandbox PUT body referencing the same connection) → [gateway-connections.md](references/gateway-connections.md). The platform proxy injects Bearer auth on every runtime-URL call automatically; the handler makes plain `requests.get(...)` calls with no auth header.
 
 **→ Skip to Final verification checklist.**
 
@@ -228,15 +229,17 @@ After trigger creation → deploy handler. See [handler-guide.md](references/han
 
 **For Direct API calls (path A):**
 - ✅ Gateway exists, connection `Connected`, `connectionRuntimeUrl` available
-- ✅ Access policy: sandbox group MI → connection (sandbox group must have SystemAssigned identity enabled — if `identity.principalId` is null, run `aca sandboxgroup update -g {rg} -n {sg} --identity SystemAssigned`)
-- ✅ Egress transform: resource `https://management.core.windows.net/`, format `Bearer {value}`
-- ✅ Test call from sandbox works (no auth header needed)
+- ✅ Access policies on connection: `gateway-acl` (gateway MI) AND `sandbox-acl` (sandbox-group MI)
+- ✅ Sandbox group has SystemAssigned MI (`aca sandboxgroup identity assign --name {sg} --system-assigned` if `principalId` is null)
+- ✅ Sandbox-group `properties.gatewayConnections[]` includes an entry with this connection's `{resourceId, connectionRuntimeUrl, authentication.type=SystemAssignedManagedIdentity}` (PATCH; merge-don't-clobber)
+- ✅ Each sandbox was created with `gatewayConnections: [{resourceId}]` in its data-plane PUT body (the aca CLI doesn't expose `--gateway-connection`; use `az rest` data-plane PUT)
+- ✅ Test call from sandbox works (no auth header needed — platform proxy injects Bearer)
 
 **For Event-driven triggers (path B):**
 - ✅ Gateway has SystemAssigned identity, connection `Connected`
-- ✅ Trigger state is `Enabled`, access policy exists (gateway MI → connection)
+- ✅ Trigger state is `Enabled`, `gateway-acl` exists (gateway MI → connection)
 - ✅ RBAC role on sandbox group (ShellCommand) OR port auth (InvokePort)
-- ✅ If handler calls runtime URL: also needs egress + ACL (same as path A)
+- ✅ If handler calls runtime URL: also needs `sandbox-acl` + sandbox-group `gatewayConnections[]` entry + per-sandbox `gatewayConnections[{resourceId}]` (same as path A)
 
 After setup → deploy the handler app. See [handler-guide.md](references/handler-guide.md).
 
@@ -273,7 +276,7 @@ az rest --method GET --url ".../connectorGateways/{gw}/triggerConfigs/{name}?api
 - [trigger-setup.md](references/trigger-setup.md) — Full trigger creation commands (Steps 5B–9B)
 - [handler-guide.md](references/handler-guide.md) — Handler development, event delivery, templates
 - [dynamic-values.md](references/dynamic-values.md) — Dynamic parameter resolution algorithms
-- [egress-setup.md](references/egress-setup.md) — ACL + egress transform + troubleshooting
+- [gateway-connections.md](references/gateway-connections.md) — Sandbox ↔ connection wiring (declarative gatewayConnections[])
 - [runtime-url-examples.md](references/runtime-url-examples.md) — Curl examples for all connectors
 - [gotchas.md](references/gotchas.md) — Common issues and solutions
 - [trigger-flow.md](references/trigger-flow.md) — Trigger architecture details

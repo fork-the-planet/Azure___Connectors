@@ -38,7 +38,7 @@ How to build and deploy handler scripts to sandboxes.
 | **Python HTTP library** | Use `requests` or `urllib`. `httpx` has SSL issues |
 | **stdin** | Empty — cannot pass data via stdin |
 | **Environment variables** | Work via `executeShellCommand`'s `environment` field |
-| **Auth for runtime URL calls** | NOT needed — egress transform injects Bearer automatically |
+| **Auth for runtime URL calls** | NOT needed — platform's gatewayConnections-aware proxy injects Bearer automatically (see [gateway-connections.md](gateway-connections.md)) |
 | **File system** | Writable at `/app/`. Deploy handler scripts here |
 | **SSL/TLS** | Prefer `REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt`. Fallback: `verify=False` + suppress warnings |
 | **stderr = failure** | Trigger runtime treats ANY stderr output as failure. Suppress all warnings. |
@@ -81,7 +81,8 @@ def get_mi_token(resource):
         headers={"X-IDENTITY-HEADER": header})
     return resp.json()["access_token"]
 ```
-> **You usually don't need MI tokens.** Egress transform handles auth on runtime URL calls.
+> **You usually don't need MI tokens.** The platform proxy handles auth on runtime URL calls
+> when the sandbox is wired via [gateway-connections.md](gateway-connections.md).
 > MI is only for calling other Azure services directly.
 
 ## O365 connector quirks
@@ -139,7 +140,7 @@ except Exception:
 else:
     SSL_VERIFY = True
 
-# Runtime URLs — egress handles auth, NO Bearer token needed
+# Runtime URLs — platform proxy injects auth via gatewayConnections; NO Bearer token needed
 O365_URL = os.environ.get("O365_RUNTIME_URL", "https://....azure-apihub.net/apim/office365/...")
 ONEDRIVE_URL = os.environ.get("ONEDRIVE_RUNTIME_URL", "https://....azure-apihub.net/apim/onedriveforbusiness/...")
 
@@ -182,7 +183,7 @@ if __name__ == "__main__":
 - SSL: CA bundle first, `verify=False` + `disable_warnings()` as fallback
 - **Never leave `verify=False` without `urllib3.disable_warnings()`** — stderr = trigger failure
 - Add retry logic (2-3 attempts, 2s delay)
-- Egress handles auth — do NOT add Authorization headers
+- Platform proxy handles auth on runtime URL calls — do NOT add Authorization headers (requires gatewayConnections wiring; see [gateway-connections.md](gateway-connections.md))
 - Use `requests` not `httpx`
 - Deploy via `aca sandbox fs write` (preferred) or base64 pipe
 - For email attachments: use `includeAttachments=true` on `/v2/Mail`, NOT separate endpoints
