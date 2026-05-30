@@ -93,7 +93,7 @@ az connector-namespace --help
 
 ### Wheel provenance
 
-The wheel is built by the OneBranch [`python-official-connector`](https://msazure.visualstudio.com/One/_build?definitionId=462678) pipeline and published as a GitHub Release. Each release tag `vX.Y.ZbN` carries:
+The wheel is built by an internal Azure DevOps OneBranch pipeline and published as a GitHub Release. Each release tag `vX.Y.ZbN` carries:
 
 - `connector_namespace-X.Y.ZbN-py3-none-any.whl` — the wheel
 - `SHA-256` of the wheel (verify against the release notes before installing in production)
