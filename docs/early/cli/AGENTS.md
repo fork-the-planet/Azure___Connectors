@@ -160,11 +160,11 @@ error like `unrecognized value 'ActiveDirectory' from choices ['Group', 'User']`
 | Error contains | Probable cause | Fix |
 |---|---|---|
 | `unrecognized value 'ActiveDirectory' from choices ['Group', 'User']` | Used connection-shape on mcp-connector access-policy | Use `--principal-type User` |
-| `option_length_too_long ... --connector-namespace-name` | aaz-only export missed the alias on a new command | Use `--namespace` (always works) |
+| `option_length_too_long ... --connector-namespace-name` | Long flag name exceeded the CLI's limit | Use `--namespace` (always works) |
 | `argument value cannot be blank` on `--tags` | Passed `--tags ""` | Omit `--tags` to preserve existing |
 | `Model 'AAZObjectArg' has no field named 'connector_name'` | Used `connectorName` instead of `name` or `connectionName` in `--connectors` | For OBO use `name=<connector-id>` (e.g. `sql`); for shared/AppOnly use `connectionName=<existing-connection>` |
 | `Failed to parse '--request' argument` | Missing `method` or `path` | At minimum: `method=GET path=/<route>` |
-| `Argument option 'name' duplicated` | Hit on a freshly generated extension | Report — swagger has a path-param naming collision |
+| `Argument option 'name' duplicated` | Hit on a freshly installed extension | File an issue — a path parameter name collides at the CLI layer |
 | `--hosted-mcp-server-id not recognized` | It's nested, not top-level | `--hosted-mcp-server hosted-mcp-server-id=<id>` |
 
 ---

@@ -395,7 +395,7 @@ az connector-namespace connection list -g $RG --namespace $NS \
 
 For everything else, **delete and recreate**. The extension intentionally narrows the update surface during preview to keep the contract small.
 
-> The namespace `update` command is wrapped by a recipe (`TagOnlyNamespaceUpdate`) that hides the aaz-generated `--api-hub-environment-id`, `--set`, `--add`, `--remove`, and `--force-string` flags. Only `--tags` reaches the wire. To roll an API Hub environment ID, delete and recreate the namespace.
+> The namespace `update` command is wrapped by a recipe (`TagOnlyNamespaceUpdate`) that hides the default `--api-hub-environment-id`, `--set`, `--add`, `--remove`, and `--force-string` flags. Only `--tags` reaches the wire. To roll an API Hub environment ID, delete and recreate the namespace.
 
 [↑ Back to top](#contents)
 
