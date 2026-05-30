@@ -1,7 +1,7 @@
 # Direct API Calls via `dynamicInvoke`
 
 Call connector operations on demand via `az rest` against the ARM `dynamicInvoke` endpoint.
-The gateway injects the stored OAuth credential automatically. **Use `request` format (NOT `parameters`).**
+The namespace injects the stored OAuth credential automatically. **Use `request` format (NOT `parameters`).**
 
 > **⚠️ Do NOT include `Content-*` headers in the request object** — `Content-Type`
 > is set by the platform.
@@ -102,13 +102,13 @@ Map Swagger `in` field: `path` → URL path, `query` → queries dict,
 ```bash
 # Example: Create a file in OneDrive
 az rest --method POST \
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" \
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" \
   --body '{
     "request": {
       "method": "POST",
       "path": "/datasets/default/files",
       "queries": {"folderPath": "/", "name": "hello.txt"},
-      "body": "Hello from Connector Gateway!"
+      "body": "Hello from Connector Namespace!"
     }
   }'
 ```
@@ -130,7 +130,7 @@ $body = @{
 
 $tmp = New-TemporaryFile; Set-Content $tmp $body
 az rest --method POST `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```

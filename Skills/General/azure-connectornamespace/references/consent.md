@@ -7,7 +7,7 @@ How to generate consent links and authenticate connections.
 ```powershell
 # Get the connection's objectId and tenantId first
 $conn = az rest --method GET `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/{conn}?api-version=2026-05-01-preview" | ConvertFrom-Json
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/connections/{conn}?api-version=2026-05-01-preview" | ConvertFrom-Json
 $objectId = $conn.properties.createdBy.objectId
 $tenantId = $conn.properties.createdBy.tenantId
 
@@ -25,7 +25,7 @@ $body = @{
 $tmpFile = New-TemporaryFile
 Set-Content $tmpFile $body
 $link = az rest --method POST `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/{conn}/listConsentLinks?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/connections/{conn}/listConsentLinks?api-version=2026-05-01-preview" `
   --body "@$tmpFile" --query "value[0].link" -o tsv
 Remove-Item $tmpFile
 Start-Process $link
@@ -44,7 +44,7 @@ Start-Process $link
 After user authenticates, verify:
 ```bash
 az rest --method GET \
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections?api-version=2026-05-01-preview" \
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/connections?api-version=2026-05-01-preview" \
   --query "value[].{name:name, status:properties.statuses[0].status}"
 # All should show: Connected. If not, re-consent.
 ```

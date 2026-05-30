@@ -119,7 +119,7 @@ The Swagger extension specifies an `operationId` to call and how to extract item
 3. Call `dynamicInvoke`:
    ```powershell
    az rest --method POST `
-     --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" `
+     --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" `
      --body '{\"request\":{\"method\":\"GET\",\"path\":\"{resolved_path}\"}}' `
      --headers "Content-Type=application/json" -o json
    ```
@@ -203,7 +203,7 @@ open.operationId = "ListRootFolders"
 $body = @{request=@{method="GET";path="/datasets/default/folders"}} | ConvertTo-Json -Compress
 $tmp = New-TemporaryFile; Set-Content $tmp $body
 az rest --method POST `
-  --url ".../{gw}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" `
+  --url ".../{namespace}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" `
   --body "@$tmp" -o json > $env:TEMP\tree-response.json
 Remove-Item $tmp
 ```
@@ -254,7 +254,7 @@ Present to user:
    $body = @{request=@{method="GET";path=$browsePath}} | ConvertTo-Json -Compress
    $tmp = New-TemporaryFile; Set-Content $tmp $body
    az rest --method POST `
-     --url ".../{gw}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" `
+     --url ".../{namespace}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" `
      --body "@$tmp" -o json > $env:TEMP\tree-response.json
    Remove-Item $tmp
    ```

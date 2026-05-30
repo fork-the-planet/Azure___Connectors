@@ -1,8 +1,8 @@
 # MCP Server Config
 
 Expose selected connector operations as Model Context Protocol (MCP) tools at a
-gateway-hosted endpoint. Any MCP client (Claude Desktop, VS Code, an Agent SDK)
-can connect to the resulting `mcpEndpointUrl` and call the tools — the gateway
+namespace-hosted endpoint. Any MCP client (Claude Desktop, VS Code, an Agent SDK)
+can connect to the resulting `mcpEndpointUrl` and call the tools — the namespace
 forwards each tool call to the underlying connector using the stored OAuth
 credential.
 
@@ -11,7 +11,7 @@ credential.
 | `kind` | What it is | Use this when |
 |---|---|---|
 | `ManagedMcpServer` *(default)* | A **connector-backed** MCP server — you map MCP tools to connector operations. **This is the main pattern for this skill.** | You want an LLM to use Office 365 / Teams / SharePoint / GitHub / ... operations as tools. |
-| `HostedMcpServer` | A **container-image-backed** MCP server (e.g., `mcp-sql`). The gateway runs the image. | You want one of the curated containerized MCP servers (currently a small registry). |
+| `HostedMcpServer` | A **container-image-backed** MCP server (e.g., `mcp-sql`). The namespace runs the image. | You want one of the curated containerized MCP servers (currently a small registry). |
 
 > The rest of this doc focuses on `ManagedMcpServer`. For `HostedMcpServer`, the
 > shape is the same except `properties.hostedMcpServer.hostedMcpServerId` (e.g.,
@@ -56,7 +56,7 @@ credential.
 | `properties.connectors[]` | required | One entry per backing connector |
 | `connectors[].name` | required | Connector key (e.g., `office365`, `sharepointonline`, `teams`) |
 | `connectors[].displayName` | required | Human-readable name shown to MCP clients |
-| `connectors[].connectionName` | required | Name of the **already-created** connection on the same gateway |
+| `connectors[].connectionName` | required | Name of the **already-created** connection on the same namespace |
 | `connectors[].operations[]` | required | Operations to expose as MCP tools |
 | `operations[].name` | required | The operation `name` from the connector's `apiOperations` (e.g., `Send_Email_(V2)`) |
 | `operations[].displayName` | required | Tool name shown to the LLM |
@@ -132,7 +132,7 @@ When an operation has a `body` parameter whose schema is a complex object
 
 Mirror Swagger faithfully: `type`, `format`, `description`, `enum`, and
 `required` (as a boolean on each sub-property — not the JSON Schema array form,
-this is the Connector-Gateway convention). For nested arrays use `items` with
+this is the Connector-Namespace convention). For nested arrays use `items` with
 its own object schema.
 
 To bake parts of the body as fixed values, use the **same wrapper name** in
@@ -215,7 +215,7 @@ operations = @(
 )
 ```
 
-At runtime the gateway merges `userParameters["item"]` (fixed `Status="Open"`)
+At runtime the namespace merges `userParameters["item"]` (fixed `Status="Open"`)
 with whatever the LLM supplied for `agentParameters["item"]` and POSTs the
 combined object to the connector.
 
@@ -348,7 +348,7 @@ Resolve the schema once at config time, using
 ```bash
 # Once dataset + table are chosen, fetch the schema:
 az rest --method POST \
-  --url ".../connectorGateways/{gw}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" \
+  --url ".../connectorGateways/{namespace}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" \
   --body "@$schemaBody"
 # (request body uses GetTable's operationId per the operation's
 #  x-ms-dynamic-schema.operationId, with the resolved dataset + table)
@@ -423,7 +423,7 @@ $body = @{
 
 $tmp = New-TemporaryFile; Set-Content $tmp $body
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/mcpServerConfigs/{mcp_name}?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/mcpServerConfigs/{mcp_name}?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -438,12 +438,12 @@ Remove-Item $tmp
 
 ```bash
 az rest --method GET \
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/mcpServerConfigs/{mcp_name}?api-version=2026-05-01-preview" \
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/mcpServerConfigs/{mcp_name}?api-version=2026-05-01-preview" \
   --query "properties.mcpEndpointUrl" -o tsv
 ```
 
 Format looks like:
-`https://<gateway-host>/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/mcpServerConfigs/{mcp_name}/mcp`
+`https://<namespace-host>/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/mcpServerConfigs/{mcp_name}/mcp`
 
 Point your MCP client at this URL.
 
@@ -489,7 +489,7 @@ $aclBody = @{
 $tmp = New-TemporaryFile; Set-Content $tmp $aclBody
 # IMPORTANT: the path segment after /accessPolicies/ must equal {caller_object_id}.
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/mcpServerConfigs/{mcp_name}/accessPolicies/{caller_object_id}?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/mcpServerConfigs/{mcp_name}/accessPolicies/{caller_object_id}?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -552,7 +552,7 @@ Validation rules (from BPM tests):
 
 - `resourceAuth` is required when `authenticationMode` ∈ {`OnBehalfOfUserWithApp`, `AppOnly`}, and forbidden when `authenticationMode` is `NotSpecified` or null.
 - `resourceAuth` is **only** valid on `HostedMcpServer` — providing it on `ManagedMcpServer` fails validation.
-- For `identity.type = SystemAssigned`, the gateway must have a SystemAssigned MI; for user-assigned, the resource ID must be attached.
+- For `identity.type = SystemAssigned`, the namespace must have a SystemAssigned MI; for user-assigned, the resource ID must be attached.
 
 ## Common mistakes
 

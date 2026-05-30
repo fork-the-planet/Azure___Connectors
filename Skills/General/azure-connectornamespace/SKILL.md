@@ -1,36 +1,43 @@
 ---
-name: azure-connectorgateway
+name: azure-connectornamespace
 description: |
-  Azure Connector Gateway — manage gateways, connections, triggers, and MCP server configs.
+  Azure Connector Namespace — manage namespaces, connections, triggers, and MCP server configs.
   Connect external SaaS services (Office 365, Teams, SharePoint, OneDrive, Forms, GitHub,
   Azure Blob, ...) to any user-provided webhook URL via event-driven triggers, expose
   selected connector operations as an MCP server endpoint, or call connector operations
   on demand via `dynamicInvoke`.
   Use when:
-  - Creating or managing connector gateways and connections
+  - Creating or managing connector namespaces and connections
   - Creating or managing trigger configs that POST to an arbitrary callback URL
   - Subscribing to connector events (email, file, list-item, form response, Teams message)
   - Wiring event sources to a customer-owned webhook, Function App, Logic App, or API
   - Recurrence / sliding-window triggers that fire on a schedule
-  - Exposing connector operations as Model Context Protocol (MCP) tools at a gateway endpoint
+  - Exposing connector operations as Model Context Protocol (MCP) tools at a namespace endpoint
   - Calling connector APIs (send email, post Teams message, upload files, list items, ...)
-  Triggers: "connector gateway", "create trigger", "trigger config", "webhook trigger",
+  Triggers: "connector namespace", "connector gateway", "create trigger", "trigger config", "webhook trigger",
   "recurrence trigger", "schedule trigger", "on new email", "on new file",
   "on new item", "on form response", "callback url", "notification url",
   "mcp", "mcp server", "mcp tools", "model context protocol",
   "send email", "post teams message", "upload to onedrive", "automate"
 ---
 
-# Azure Connector Gateway (generic)
+# Azure Connector Namespace (generic)
 
-Manage Microsoft.Web connector gateways, their connections, trigger configs, and MCP
+Manage Microsoft.Web connector namespaces, their connections, trigger configs, and MCP
 server configs. This skill is **sandbox-agnostic** — it does not assume your callback
 target. Callbacks can be any HTTP(S) URL (Function App, Logic App, App Service,
-ngrok, anywhere) and you choose how the gateway authenticates to it.
+ngrok, anywhere) and you choose how the namespace authenticates to it.
 
 > If you specifically need to fan events into an Azure Container Apps sandbox group
 > (with declarative `gatewayConnections[]` wiring and sandbox callbacks), use the
 > companion skill at `Skills/Sandbox/azure-connectorgateway` instead.
+
+> **Naming note.** This skill was previously called "Connector Gateway". The
+> resource is now displayed as **"Connector Namespace"** everywhere (matching
+> the Cascade portal rename — see `Cascade.Portal.Client/src/components/CreateConnectorNamespacePanel.tsx`).
+> **The ARM resource type is still `Microsoft.Web/connectorGateways`** (legacy
+> URL segment kept for backwards compatibility) and the property `gatewayConnections[]`
+> on sandbox groups also keeps its name. Do not rewrite those API strings.
 
 ## Three patterns this skill supports
 
@@ -48,19 +55,19 @@ ngrok, anywhere) and you choose how the gateway authenticates to it.
 | **No generated notebooks/scripts** | Walk the user through interactively. Do NOT generate a standalone notebook or script. |
 | **No guessing dynamic values** | `x-ms-dynamic-*` → call the API, present results, STOP. Never assume a team/channel/folder/site/list. |
 | **No guessing the callback URL** | The callback URL is **always** user-provided. Ask for it explicitly. Do NOT invent one. |
-| **MSI audience: ask, then default** | For `ManagedServiceIdentity` callback auth, **ask the user for `audience`** (the AAD-protected resource the gateway should acquire a token for, e.g. an AAD app they own, `https://graph.microsoft.com/`, etc.). If the user doesn't provide one, default to `https://management.azure.com/`. **Never** use the callback URL as the audience. |
+| **MSI audience: ask, then default** | For `ManagedServiceIdentity` callback auth, **ask the user for `audience`** (the AAD-protected resource the namespace should acquire a token for, e.g. an AAD app they own, `https://graph.microsoft.com/`, etc.). If the user doesn't provide one, default to `https://management.azure.com/`. **Never** use the callback URL as the audience. |
 | **Execute, don't ask** | Once you have inputs, run the commands. Don't ask "Can I run this?" |
-| **`az rest` only** | No `az connectorgateway` or other extensions exist. Use `az rest` for ARM and `az rest --resource` for data-plane. |
+| **`az rest` only** | No `az connectornamespace` (or legacy `az connectorgateway`) extension exists. Use `az rest` for ARM and `az rest --resource` for data-plane. |
 | **Always `@$tmpFile`** | For `az rest --body` in PowerShell — inline JSON breaks quoting. See [gotchas.md](references/gotchas.md). |
 | **Trigger body schema** | Properties root contains: `type` OR `connectionDetails`+`operationName`+`parameters`, plus `notificationDetails` (`callbackUrl`+`authentication`+`body?`). **Body-sourced leaves (top-level body param + every nested sub-property) are aggregated into ONE `parameters[]` entry whose `name` is literally `"body"` and whose `value` is the nested object** (dotted leaf names like `filter.labels` get rolled up via `setNestedValue`). The wrapper name `"body"` is independent of the Swagger body parameter's own name. Non-body dotted leaves are grouped under their root segment. See [trigger-setup.md](references/trigger-setup.md) §2b. |
-| **Trigger needs `gateway-acl`** | For connector-event triggers, the gateway MI must have an access policy on the connection. See [trigger-setup.md](references/trigger-setup.md) Step 4. |
+| **Trigger needs `namespace-acl`** | For connector-event triggers, the namespace MI must have an access policy on the connection. See [trigger-setup.md](references/trigger-setup.md) Step 4. |
 | **MCP user params** | Each `userParameters[]` entry is a **fixed value** for a connector-operation parameter (resolved via `dynamic-values` against the connection at config time). Each `agentParameters[]` entry declares a JSON-Schema input the **caller (LLM) supplies** at tool-call time. **Every required parameter (including required body sub-properties) MUST appear in one of the two arrays** — the runtime rejects the call with `missing required property '<path>'` otherwise. See [mcp-server-config.md](references/mcp-server-config.md). |
 | **MCP per-parameter triage** | **STOP and ask the user, for each operation parameter (path/query/body field, including each required body sub-property), whether it should be a fixed `userParameter`, a caller-supplied `agentParameter`, or skipped (optional only).** Do this **before** the `mcpServerConfigs` PUT, even when no `x-ms-dynamic-*` markers are present. Decompose the body's object schema and triage each leaf. **For MCP, body wrapper name = the Swagger body param's own name (e.g. `emailMessage`).** See [mcp-server-config.md](references/mcp-server-config.md) §"Per-parameter triage workflow". |
 | **Parallel execution** | Run independent ops (connections, ACLs, dynamic-value lookups, MCP operations) as parallel tool calls. |
 
-**When to STOP and ask the user:** subscription/resource group, gateway name, connection name, any parameter with dynamic values (teams/channels/folders/sites/lists), callback URL, callback authentication type, **MSI `audience` (if MSI auth chosen — default to `https://management.azure.com/` if user doesn't provide one)**, OAuth consent completion, **MCP per-parameter triage (`userParameter` vs `agentParameter` vs skip — for every path/query/body field, including each body sub-property)**.
+**When to STOP and ask the user:** subscription/resource group, namespace name, connection name, any parameter with dynamic values (teams/channels/folders/sites/lists), callback URL, callback authentication type, **MSI `audience` (if MSI auth chosen — default to `https://management.azure.com/` if user doesn't provide one)**, OAuth consent completion, **MCP per-parameter triage (`userParameter` vs `agentParameter` vs skip — for every path/query/body field, including each body sub-property)**.
 
-**When to EXECUTE immediately:** gateway/connection/trigger/MCP-config/access-policy CRUD, role assignments, dynamic-value lookups.
+**When to EXECUTE immediately:** namespace/connection/trigger/MCP-config/access-policy CRUD, role assignments, dynamic-value lookups.
 
 ---
 
@@ -81,37 +88,37 @@ ngrok, anywhere) and you choose how the gateway authenticates to it.
 
 ---
 
-### Step 1: Gateway setup
+### Step 1: Namespace setup
 
-> **ARM base:** `https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways`
+> **ARM base:** `https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorNamespaces`
 > **API version:** `2026-05-01-preview`
 
-Ask the user: "Do you have an existing connector gateway, or should I create a new one?"
+Ask the user: "Do you have an existing connector namespace, or should I create a new one?"
 
 - **Existing:** ask for the name and fetch it:
   ```bash
   az rest --method GET \
-    --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}?api-version=2026-05-01-preview" \
+    --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}?api-version=2026-05-01-preview" \
     --query "{name:name, location:location, principalId:identity.principalId, tenantId:identity.tenantId, identityType:identity.type, userAssigned:identity.userAssignedIdentities}"
   ```
-- **New:** ask for `{gw}` name + location. **Create with a SystemAssigned managed identity**
+- **New:** ask for `{namespace}` name + location. **Create with a SystemAssigned managed identity**
   (required for trigger event subscriptions on connector-event triggers AND for
   `ManagedServiceIdentity` callback auth):
   ```powershell
-  $gwBody = @{ location = "{location}"; identity = @{ type = "SystemAssigned" } } | ConvertTo-Json -Compress
-  $tmp = New-TemporaryFile; Set-Content $tmp $gwBody
+  $namespaceBody = @{ location = "{location}"; identity = @{ type = "SystemAssigned" } } | ConvertTo-Json -Compress
+  $tmp = New-TemporaryFile; Set-Content $tmp $namespaceBody
   az rest --method PUT `
-    --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}?api-version=2026-05-01-preview" `
+    --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}?api-version=2026-05-01-preview" `
     --body "@$tmp" `
     --query "{name:name, principalId:identity.principalId, tenantId:identity.tenantId}"
   Remove-Item $tmp
   ```
 
-**Capture `principalId` and `tenantId`** — needed later for the `gateway-acl`
+**Capture `principalId` and `tenantId`** — needed later for the `namespace-acl`
 access policy and (optionally) for `ManagedServiceIdentity` callback authentication.
 
 > If a user later wants to call their callback URL using a **user-assigned** identity,
-> they'll need to add that identity to the gateway separately. See
+> they'll need to add that identity to the namespace separately. See
 > [notification-authentication.md](references/notification-authentication.md).
 
 ---
@@ -127,15 +134,15 @@ Create connections in parallel:
 $connBody = @{ properties = @{ connectorName = "office365" }; location = "{location}" } | ConvertTo-Json -Compress
 $tmp = New-TemporaryFile; Set-Content $tmp $connBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/o365-conn?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/connections/o365-conn?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
 
 Then generate consent links and open in the browser — **see [consent.md](references/consent.md)** for the exact body format and `Start-Process` pattern. Verify status `Connected` before continuing. See also [connections.md](references/connections.md) for the full CRUD reference.
 
-> **For trigger configs:** also create a `gateway-acl` access policy granting the
-> gateway MI access to the connection (required for the gateway to subscribe to
+> **For trigger configs:** also create a `namespace-acl` access policy granting the
+> namespace MI access to the connection (required for the namespace to subscribe to
 > connector events). See [trigger-setup.md](references/trigger-setup.md) Step 4.
 
 ---
@@ -144,7 +151,7 @@ Then generate consent links and open in the browser — **see [consent.md](refer
 
 Ask the user:
 - **A) Trigger config** — push notifications to your callback URL when events happen, or on a schedule.
-- **B) MCP server config** — expose selected connector operations as MCP tools at a gateway endpoint, callable by any MCP client (Claude Desktop, VS Code, etc.).
+- **B) MCP server config** — expose selected connector operations as MCP tools at a namespace endpoint, callable by any MCP client (Claude Desktop, VS Code, etc.).
 - **C) Direct API call** — one-off `dynamicInvoke` (send an email now, list items now).
 
 **Stop and wait for the user's answer.**
@@ -200,18 +207,18 @@ Ask the user:
    | `QueryString` | Add a `?key=value` automatically (e.g., Function App key) |
    | `Raw` | Send a literal `Authorization: <scheme> <parameter>` header |
    | `Basic` | HTTP Basic with `username`/`password` |
-   | `ManagedServiceIdentity` | Gateway acquires a token for `audience` using its own MI (system- or user-assigned). **Ask the user for `audience`** — if they don't provide one, default to `https://management.azure.com/`. Never use the callback URL as the audience. See [notification-authentication.md](references/notification-authentication.md). |
-   | `ActiveDirectoryOAuth` | Gateway authenticates as an Entra app (tenant/clientId/secret/audience) |
+   | `ManagedServiceIdentity` | Namespace acquires a token for `audience` using its own MI (system- or user-assigned). **Ask the user for `audience`** — if they don't provide one, default to `https://management.azure.com/`. Never use the callback URL as the audience. See [notification-authentication.md](references/notification-authentication.md). |
+   | `ActiveDirectoryOAuth` | Namespace authenticates as an Entra app (tenant/clientId/secret/audience) |
    | `ClientCertificate` | Mutual TLS with a `pfx`/`password` |
 
 6. **Create the trigger config** (one PUT). See [trigger-setup.md](references/trigger-setup.md) Step 3 for the canonical body templates for each source × auth combination.
 
-7. **Create the `gateway-acl`** (only for connector-event triggers). See [trigger-setup.md](references/trigger-setup.md) Step 4.
+7. **Create the `namespace-acl`** (only for connector-event triggers). See [trigger-setup.md](references/trigger-setup.md) Step 4.
 
 8. **Verify** the trigger state is `Enabled`:
    ```bash
    az rest --method GET \
-     --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/triggerConfigs/{name}?api-version=2026-05-01-preview" \
+     --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/triggerConfigs/{name}?api-version=2026-05-01-preview" \
      --query "properties.state" -o tsv
    ```
 
@@ -288,7 +295,7 @@ Ask the user:
      }
    }
    ```
-   PUT to: `.../connectorGateways/{gw}/mcpServerConfigs/{name}?api-version=2026-05-01-preview`
+   PUT to: `.../connectorGateways/{namespace}/mcpServerConfigs/{name}?api-version=2026-05-01-preview`
 
    > **Always serialize with `ConvertTo-Json -Depth 20`** (or higher). The
    > default depth (2) silently flattens nested body schemas to the literal
@@ -313,8 +320,8 @@ Ask the user:
 ### Final verification checklist
 
 **For trigger configs (path A):**
-- ✅ Gateway exists; for `ManagedServiceIdentity` callback auth, gateway has the requested identity
-- ✅ For connector-event triggers: connection `Connected`, `gateway-acl` exists on the connection
+- ✅ Namespace exists; for `ManagedServiceIdentity` callback auth, namespace has the requested identity
+- ✅ For connector-event triggers: connection `Connected`, `namespace-acl` exists on the connection
 - ✅ Trigger `properties.state` is `Enabled`
 - ✅ User-provided callback URL is reachable + accepts the chosen auth
 
@@ -334,11 +341,11 @@ Ask the user:
 # ARM base:  https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways
 # API ver:   api-version=2026-05-01-preview
 
-# Gateway
-az rest --method GET --url ".../connectorGateways/{gw}?api-version=2026-05-01-preview"
+# Namespace
+az rest --method GET --url ".../connectorGateways/{namespace}?api-version=2026-05-01-preview"
 
 # Connections
-az rest --method GET --url ".../connectorGateways/{gw}/connections?api-version=2026-05-01-preview"
+az rest --method GET --url ".../connectorGateways/{namespace}/connections?api-version=2026-05-01-preview"
 
 # List trigger operations + summaries
 az rest --method GET --url ".../locations/{location}/managedApis/{connector}/apiOperations?api-version=2016-06-01"
@@ -347,16 +354,16 @@ az rest --method GET --url ".../locations/{location}/managedApis/{connector}/api
 az rest --method GET --url ".../locations/{location}/managedApis/{connector}" --url-parameters "api-version=2016-06-01" "export=true"
 
 # Dynamic invoke
-az rest --method POST --url ".../connectorGateways/{gw}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" --body '{"request":{"method":"GET","path":"/..."}}'
+az rest --method POST --url ".../connectorGateways/{namespace}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" --body '{"request":{"method":"GET","path":"/..."}}'
 
 # Trigger configs
-az rest --method GET --url ".../connectorGateways/{gw}/triggerConfigs?api-version=2026-05-01-preview"
-az rest --method POST --url ".../connectorGateways/{gw}/triggerConfigs/{name}/disable?api-version=2026-05-01-preview"
-az rest --method POST --url ".../connectorGateways/{gw}/triggerConfigs/{name}/enable?api-version=2026-05-01-preview"
+az rest --method GET --url ".../connectorGateways/{namespace}/triggerConfigs?api-version=2026-05-01-preview"
+az rest --method POST --url ".../connectorGateways/{namespace}/triggerConfigs/{name}/disable?api-version=2026-05-01-preview"
+az rest --method POST --url ".../connectorGateways/{namespace}/triggerConfigs/{name}/enable?api-version=2026-05-01-preview"
 
 # MCP server configs
-az rest --method GET --url ".../connectorGateways/{gw}/mcpServerConfigs?api-version=2026-05-01-preview"
-az rest --method GET --url ".../connectorGateways/{gw}/mcpServerConfigs/{name}?api-version=2026-05-01-preview" --query "properties.mcpEndpointUrl" -o tsv
+az rest --method GET --url ".../connectorGateways/{namespace}/mcpServerConfigs?api-version=2026-05-01-preview"
+az rest --method GET --url ".../connectorGateways/{namespace}/mcpServerConfigs/{name}?api-version=2026-05-01-preview" --query "properties.mcpEndpointUrl" -o tsv
 ```
 
 ## References

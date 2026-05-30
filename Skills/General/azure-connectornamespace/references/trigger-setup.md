@@ -1,6 +1,6 @@
 # Trigger Setup
 
-Detailed commands for creating trigger configs on a connector gateway. Triggers
+Detailed commands for creating trigger configs on a connector namespace. Triggers
 fire on either a connector event (new email, new file, ...) or on a schedule
 (Recurrence / SlidingWindow), and POST a notification to your `callbackUrl`.
 
@@ -8,7 +8,7 @@ fire on either a connector event (new email, new file, ...) or on a schedule
 
 | Source | When fires | Requires connection? |
 |---|---|---|
-| **Connector event** | When the connector reports an event (e.g., `OnNewEmailV3`) | Yes — plus `gateway-acl` |
+| **Connector event** | When the connector reports an event (e.g., `OnNewEmailV3`) | Yes — plus `namespace-acl` |
 | **Recurrence** | Every N `Second`/`Minute`/`Hour`/`Day` | No |
 | **SlidingWindow** | Every N units with a `startTime`/`endTime` window state | No |
 
@@ -173,7 +173,7 @@ parameters = @(
 
 ## Step 3: PUT the trigger config
 
-PUT to `.../connectorGateways/{gw}/triggerConfigs/{name}?api-version=2026-05-01-preview`.
+PUT to `.../connectorGateways/{namespace}/triggerConfigs/{name}?api-version=2026-05-01-preview`.
 
 ### 3A. Connector-event trigger
 
@@ -205,7 +205,7 @@ $triggerBody = @{
 
 $tmp = New-TemporaryFile; Set-Content $tmp $triggerBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/triggerConfigs/{trigger_name}?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/triggerConfigs/{trigger_name}?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -235,7 +235,7 @@ $triggerBody = @{
 
 $tmp = New-TemporaryFile; Set-Content $tmp $triggerBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/triggerConfigs/{trigger_name}?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/triggerConfigs/{trigger_name}?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -297,13 +297,13 @@ See [notification-authentication.md](notification-authentication.md) for all 6 a
 (`QueryString`, `Raw`, `Basic`, `ManagedServiceIdentity`, `ActiveDirectoryOAuth`, `ClientCertificate`)
 and their exact JSON shapes.
 
-## Step 4: `gateway-acl` (connector-event triggers only)
+## Step 4: `namespace-acl` (connector-event triggers only)
 
-The gateway MI must have an access policy on the connection so the gateway can
+The namespace MI must have an access policy on the connection so the namespace can
 subscribe to connector events. Skip this for Recurrence / SlidingWindow.
 
 ```powershell
-# Get gateway's principalId and tenantId first (from Step 1 of SKILL.md)
+# Get namespace's principalId and tenantId first (from Step 1 of SKILL.md)
 $aclBody = @{
   location = "{location}"
   properties = @{
@@ -315,7 +315,7 @@ $aclBody = @{
 } | ConvertTo-Json -Depth 5 -Compress
 $tmp = New-TemporaryFile; Set-Content $tmp $aclBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/{conn}/accessPolicies/gateway-acl?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/connections/{conn}/accessPolicies/namespace-acl?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -326,7 +326,7 @@ This is independent of the trigger PUT — **run them in parallel**.
 
 ```bash
 az rest --method GET \
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/triggerConfigs/{trigger}?api-version=2026-05-01-preview" \
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/triggerConfigs/{trigger}?api-version=2026-05-01-preview" \
   --query "{state:properties.state, type:properties.type, callback:properties.notificationDetails.callbackUrl}"
 # state should be: Enabled
 ```
@@ -340,26 +340,26 @@ can take 1-2 minutes.
 ```bash
 # Disable
 az rest --method POST \
-  --url ".../connectorGateways/{gw}/triggerConfigs/{name}/disable?api-version=2026-05-01-preview"
+  --url ".../connectorGateways/{namespace}/triggerConfigs/{name}/disable?api-version=2026-05-01-preview"
 
 # Enable
 az rest --method POST \
-  --url ".../connectorGateways/{gw}/triggerConfigs/{name}/enable?api-version=2026-05-01-preview"
+  --url ".../connectorGateways/{namespace}/triggerConfigs/{name}/enable?api-version=2026-05-01-preview"
 
 # Delete
 az rest --method DELETE \
-  --url ".../connectorGateways/{gw}/triggerConfigs/{name}?api-version=2026-05-01-preview"
+  --url ".../connectorGateways/{namespace}/triggerConfigs/{name}?api-version=2026-05-01-preview"
 ```
 
 ## List recent runs (for debugging)
 
 ```bash
 az rest --method GET \
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/triggerConfigs/{name}/runs?api-version=2026-05-01-preview" \
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/triggerConfigs/{name}/runs?api-version=2026-05-01-preview" \
   --query "value[].{name:name, status:properties.status, start:properties.startTime, end:properties.endTime, error:properties.error.message}" -o table
 ```
 
-Each run shows whether the gateway succeeded in POSTing to your `callbackUrl`
+Each run shows whether the namespace succeeded in POSTing to your `callbackUrl`
 and what HTTP status came back.
 
 ## Common mistakes
@@ -372,8 +372,8 @@ and what HTTP status came back.
 | **Body sub-properties emitted as flat dotted-name params** (e.g. `body.filter.labels`) | The runtime won't unwrap them. Build a nested object and emit it as `{ name = "body"; value = @{ filter = @{ labels = ... } } }`. See §2b. |
 | **Body wrapper named after the Swagger param** (e.g. `requestBody` for Teams) | Triggers always use the literal string `"body"`. The Swagger body param's own name is irrelevant. (This is opposite to MCP, where the body wrapper preserves the Swagger name.) |
 | **`ConvertTo-Json -Depth` too shallow** → nested objects coerced to `"System.Collections.Hashtable"` strings | Use `-Depth 20` (or higher) when serializing trigger configs that contain nested body objects. Verify with a GET after the PUT. |
-| Forgetting `gateway-acl` on a connector-event trigger | Subscription fails silently — trigger state may show `Enabled` but never fires. Create the ACL. |
+| Forgetting `namespace-acl` on a connector-event trigger | Subscription fails silently — trigger state may show `Enabled` but never fires. Create the ACL. |
 | Inline JSON `--body '...'` in PowerShell | "Unsupported Media Type" — always `@$tmpFile`. See [gotchas.md](gotchas.md). |
 | `ManagedServiceIdentity` auth without an audience | `audience` is required (non-empty). Ask the user for it; if they don't provide one, default to `https://management.azure.com/`. |
 | `ManagedServiceIdentity` with callback URL as audience | The token will be meaningless (and rejected if the callback validates AAD tokens). Use a real AAD-protected resource URI — when in doubt, default to `https://management.azure.com/`. See [notification-authentication.md](notification-authentication.md). |
-| `ManagedServiceIdentity` referencing a UAMI not on the gateway | Attach it to the gateway first (see [notification-authentication.md](notification-authentication.md)). |
+| `ManagedServiceIdentity` referencing a UAMI not on the namespace | Attach it to the namespace first (see [notification-authentication.md](notification-authentication.md)). |

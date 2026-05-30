@@ -1,14 +1,15 @@
 # Gotchas & Troubleshooting
 
-Common issues for the generic connector-gateway skill and their fixes.
+Common issues for the generic connector-namespace skill and their fixes.
 
 | Issue | Solution |
 |-------|----------|
-| **Trigger not firing** (connector event) | Make sure `gateway-acl` exists on the connection (gateway MI → connection). Without it the subscription silently fails. See [trigger-setup.md](trigger-setup.md) Step 4. |
-| **Trigger state is `Enabled` but no runs** | Check `triggerConfigs/{name}/runs` for errors. Most commonly: the gateway couldn't reach `callbackUrl` (4xx/5xx from your endpoint) or authentication mismatch. |
+| **"Connector Gateway" vs "Connector Namespace" — which name?** | The resource is now displayed everywhere as **"Connector Namespace"** (matching the Cascade portal rename). The underlying ARM resource type is still `Microsoft.Web/connectorGateways` (URL segment kept for backwards compatibility), and the sandbox-group property `gatewayConnections[]` also keeps its name. Use the new display name in prose; keep the legacy strings in URLs and JSON payloads. |
+| **Trigger not firing** (connector event) | Make sure `namespace-acl` exists on the connection (namespace MI → connection). Without it the subscription silently fails. See [trigger-setup.md](trigger-setup.md) Step 4. |
+| **Trigger state is `Enabled` but no runs** | Check `triggerConfigs/{name}/runs` for errors. Most commonly: the namespace couldn't reach `callbackUrl` (4xx/5xx from your endpoint) or authentication mismatch. |
 | **Trigger run shows `Unauthorized` from callback** | Your callback URL's auth doesn't match `notificationDetails.authentication`. Re-check the type/audience/secret. See [notification-authentication.md](notification-authentication.md). |
 | **`ManagedServiceIdentity` callback with no audience supplied by user** | `audience` is required. **Ask the user**; if they don't provide one, default to `https://management.azure.com/` (real AAD-protected resource). **Never** use the callback URL as the audience. See [notification-authentication.md](notification-authentication.md). |
-| **`ManagedServiceIdentity` callback fails with "identity not configured"** | The requested MI isn't attached to the gateway. Either omit `identity` (uses SystemAssigned) or attach the UAMI to the gateway. See [notification-authentication.md](notification-authentication.md). |
+| **`ManagedServiceIdentity` callback fails with "identity not configured"** | The requested MI isn't attached to the namespace. Either omit `identity` (uses SystemAssigned) or attach the UAMI to the namespace. See [notification-authentication.md](notification-authentication.md). |
 | **Connection stuck in `Error` / `Unauthenticated`** | This is the normal pre-consent state. Run [consent.md](consent.md) and have the user complete the browser flow. If still stuck after consent, regenerate the consent link — do NOT retry with different body formats. |
 | **Consent redirect shows error** | Body MUST be `{"parameters":[{"objectId":"...","tenantId":"...","redirectUrl":"https://microsoft.com","parameterName":"token"}]}`. Get `objectId`/`tenantId` from the connection's `properties.createdBy`. Always open with `Start-Process`. |
 | **`dynamicInvoke` 400: `parameters` not valid** | Use `{"request": {"method":..., "path":...}}` format. The older `{"parameters": {"operationId":...}}` format is not supported. |
@@ -28,7 +29,7 @@ Common issues for the generic connector-gateway skill and their fixes.
 | **Trigger body wrapper named after the Swagger param (e.g. `requestBody`)** | Triggers always use the literal string `"body"` as the wrapper name, regardless of the Swagger body parameter's own name. (MCP is opposite — it uses the Swagger name.) See [trigger-setup.md](trigger-setup.md) §2b. |
 | **`callbackTarget` rejected** | That field does not exist in the schema. Use `notificationDetails.callbackUrl`. |
 | **PowerShell `ConvertFrom-Json` fails on Swagger** | `az rest ... export=true` returns content that piping breaks. Always `-o json > $env:TEMP\swagger.json` first, then read the file. |
-| **Cleanup order** | Delete trigger configs and MCP server configs → delete access policies on connections → delete connections → delete gateway. Trigger configs hold subscriptions, so delete them first to avoid orphan webhooks. |
-| **403 from `az rest` against ARM** | Your Azure CLI identity doesn't have RBAC on the resource group / gateway. You need at least `Microsoft.Web/connectorGateways/*` (Contributor or a custom role). |
-| **PUT to gateway fails with "region not supported"** | Try another region. Common supported regions: `eastus`, `eastus2`, `westus`, `westus2`, `westus3`, `northeurope`, `westeurope`, `australiaeast`, `southeastasia`, `brazilsouth`. |
+| **Cleanup order** | Delete trigger configs and MCP server configs → delete access policies on connections → delete connections → delete namespace. Trigger configs hold subscriptions, so delete them first to avoid orphan webhooks. |
+| **403 from `az rest` against ARM** | Your Azure CLI identity doesn't have RBAC on the resource group / namespace. You need at least `Microsoft.Web/connectorGateways/*` (Contributor or a custom role). |
+| **PUT to namespace fails with "region not supported"** | Try another region. Common supported regions: `eastus`, `eastus2`, `westus`, `westus2`, `westus3`, `northeurope`, `westeurope`, `australiaeast`, `southeastasia`, `brazilsouth`. |
 | **Provider not registered** | `az provider register --namespace Microsoft.Web` and wait for `Registered` state. |

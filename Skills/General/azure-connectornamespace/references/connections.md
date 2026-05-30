@@ -1,7 +1,7 @@
 # Connections
 
 A **connection** is a stored credential for one connector (e.g., one Office 365
-mailbox, one Teams tenant, one GitHub user) attached to one gateway. Triggers,
+mailbox, one Teams tenant, one GitHub user) attached to one namespace. Triggers,
 MCP server configs, and direct-API calls all reference connections by name.
 
 This doc covers connection CRUD; for the **consent flow** that turns a freshly
@@ -22,17 +22,17 @@ Use the `name` value (lowercase, e.g., `office365`, `sharepointonline`, `teams`,
 
 ## Create a connection
 
-PUT to `.../connectorGateways/{gw}/connections/{connection_name}?api-version=2026-05-01-preview`.
+PUT to `.../connectorGateways/{namespace}/connections/{connection_name}?api-version=2026-05-01-preview`.
 
 ```powershell
 $connBody = @{
-  location = "{location}"                    # must match the gateway's location
+  location = "{location}"                    # must match the namespace's location
   properties = @{ connectorName = "{connector}" }   # e.g. "office365"
 } | ConvertTo-Json -Compress
 
 $tmp = New-TemporaryFile; Set-Content $tmp $connBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/connections/{conn_name}?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{namespace}/connections/{conn_name}?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -45,7 +45,7 @@ broken; it just needs the user to complete OAuth. Run [consent.md](consent.md).
 
 ```bash
 az rest --method GET \
-  --url ".../connectorGateways/{gw}/connections/{conn}?api-version=2026-05-01-preview" \
+  --url ".../connectorGateways/{namespace}/connections/{conn}?api-version=2026-05-01-preview" \
   --query "{name:name, status:properties.statuses[0].status, createdBy:properties.createdBy.objectId}"
 ```
 
@@ -55,7 +55,7 @@ A connection is ready when `status` is `Connected`.
 
 ```bash
 az rest --method GET \
-  --url ".../connectorGateways/{gw}/connections?api-version=2026-05-01-preview" \
+  --url ".../connectorGateways/{namespace}/connections?api-version=2026-05-01-preview" \
   --query "value[].{name:name, connector:properties.connectorName, status:properties.statuses[0].status}" -o table
 ```
 
@@ -78,25 +78,25 @@ A connection's access policies control which Azure AD principals can **use** it
 (invoke operations via `dynamicInvoke`, subscribe to events for triggers, drive
 MCP tool calls, etc.).
 
-The gateway's own MI needs an `gateway-acl` policy on every connection it must
+The namespace's own MI needs an `namespace-acl` policy on every connection it must
 subscribe to for connector-event triggers, or invoke for MCP tool calls.
 
-### Get the gateway's MI
+### Get the namespace's MI
 
 ```bash
 az rest --method GET \
-  --url ".../connectorGateways/{gw}?api-version=2026-05-01-preview" \
+  --url ".../connectorGateways/{namespace}?api-version=2026-05-01-preview" \
   --query "{principalId:identity.principalId, tenantId:identity.tenantId}"
 ```
 
-> If `identity` is null, enable a system-assigned MI on the gateway:
+> If `identity` is null, enable a system-assigned MI on the namespace:
 > ```bash
 > az rest --method PATCH \
->   --url ".../connectorGateways/{gw}?api-version=2026-05-01-preview" \
+>   --url ".../connectorGateways/{namespace}?api-version=2026-05-01-preview" \
 >   --body '{\"identity\":{\"type\":\"SystemAssigned\"}}'
 > ```
 
-### Create the gateway ACL
+### Create the namespace ACL
 
 ```powershell
 $aclBody = @{
@@ -111,7 +111,7 @@ $aclBody = @{
 
 $tmp = New-TemporaryFile; Set-Content $tmp $aclBody
 az rest --method PUT `
-  --url ".../connections/{conn}/accessPolicies/gateway-acl?api-version=2026-05-01-preview" `
+  --url ".../connections/{conn}/accessPolicies/namespace-acl?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -134,7 +134,7 @@ $aclBody = @{
 # PUT to .../accessPolicies/{policy_name}
 ```
 
-Policy names are arbitrary but should be descriptive (`gateway-acl`,
+Policy names are arbitrary but should be descriptive (`namespace-acl`,
 `developer-jane`, `agent-prod-mi`, ...).
 
 ### List policies

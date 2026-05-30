@@ -1,6 +1,6 @@
 # Trigger Flow & Lifecycle
 
-How a connector-gateway trigger actually works end-to-end, and the ARM operations
+How a connector-namespace trigger actually works end-to-end, and the ARM operations
 you use to manage its lifecycle.
 
 ## Architecture
@@ -9,7 +9,7 @@ you use to manage its lifecycle.
 
 ```
 ┌─────────────────┐   1. Subscribe        ┌──────────────────────┐
-│  Connector SaaS │ ◀──────────────────── │   Connector Gateway  │
+│  Connector SaaS │ ◀──────────────────── │   Connector Namespace  │
 │  (Office 365,   │                       │   (Microsoft.Web/    │
 │   SharePoint,   │   2. Webhook event    │    connectorGateways)│
 │   Teams, ...)   │ ────────────────────▶ │                      │
@@ -28,30 +28,30 @@ you use to manage its lifecycle.
                                          └────────────────────────┘
 ```
 
-1. When you `PUT` a connector-event trigger config, the gateway uses the
+1. When you `PUT` a connector-event trigger config, the namespace uses the
    underlying **connection** to subscribe to the connector (via the operation's
    `x-ms-notification-url`).
-2. When the SaaS detects the event, it POSTs a webhook to the gateway.
-3. The gateway forwards the payload to your `callbackUrl`, applying any
+2. When the SaaS detects the event, it POSTs a webhook to the namespace.
+3. The namespace forwards the payload to your `callbackUrl`, applying any
    configured `authentication`.
 
 ### Recurrence / SlidingWindow trigger
 
 ```
 ┌──────────────────────┐   1. Timer fires    ┌────────────────────────┐
-│   Connector Gateway  │ ──────────────────▶ │  Your callback URL     │
+│   Connector Namespace  │ ──────────────────▶ │  Your callback URL     │
 │   (scheduler)        │                     │  (any HTTPS endpoint)  │
 └──────────────────────┘                     └────────────────────────┘
 ```
 
 No external SaaS, no subscription, no connection needed. Just a timer inside the
-gateway that POSTs to your `callbackUrl` per the `recurrence` schedule.
+namespace that POSTs to your `callbackUrl` per the `recurrence` schedule.
 
 ## Required pieces
 
-| Pattern | Connection? | `gateway-acl` ACL? | Notification auth? |
+| Pattern | Connection? | `namespace-acl` ACL? | Notification auth? |
 |---|---|---|---|
-| Connector event | Yes | Yes (gateway MI → connection) | Recommended |
+| Connector event | Yes | Yes (namespace MI → connection) | Recommended |
 | Recurrence | No | No | Recommended |
 | SlidingWindow | No | No | Recommended |
 
@@ -90,7 +90,7 @@ az rest --method GET --url ".../triggerConfigs/{name}/runs?api-version=2026-05-0
 | `status` | Meaning |
 |---|---|
 | `Succeeded` | Callback returned 2xx |
-| `Failed` | Callback returned 4xx/5xx, or the gateway couldn't reach it. See `error.message`. |
+| `Failed` | Callback returned 4xx/5xx, or the namespace couldn't reach it. See `error.message`. |
 | `Skipped` | Trigger fired but a downstream rule (e.g., dedup) suppressed the callback. |
 | `Cancelled` | Trigger was disabled while a run was in flight. |
 

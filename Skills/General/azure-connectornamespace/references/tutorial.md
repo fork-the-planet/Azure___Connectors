@@ -1,6 +1,6 @@
 # Tutorial: Two end-to-end walkthroughs
 
-Two minimal real-world scenarios you can run to verify a gateway, a connection,
+Two minimal real-world scenarios you can run to verify a namespace, a connection,
 and a trigger config all work together.
 
 - **Tutorial A** (no connection) — recurrence trigger pinging your webhook
@@ -14,7 +14,7 @@ Set these variables once at the top of your terminal session:
 $sub      = "<your subscription id>"
 $rg       = "tutorial-cg-rg"
 $location = "eastus"
-$gw       = "tutorial-gw"
+$namespace       = "tutorial-ns"
 $preview  = "2026-05-01-preview"
 ```
 
@@ -29,34 +29,34 @@ az group create --name $rg --location $location
 az provider register --namespace Microsoft.Web
 ```
 
-### 2. Connector gateway with system-assigned MI
+### 2. Connector namespace with system-assigned MI
 
 ```powershell
-$gwBody = @{
+$namespaceBody = @{
   location = $location
   identity = @{ type = "SystemAssigned" }
   properties = @{}
 } | ConvertTo-Json -Depth 4 -Compress
 
-$tmp = New-TemporaryFile; Set-Content $tmp $gwBody
+$tmp = New-TemporaryFile; Set-Content $tmp $namespaceBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw?api-version=$preview" `
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace?api-version=$preview" `
   --body "@$tmp"
 Remove-Item $tmp
 
 # Wait for provisioningState = Succeeded
 az rest --method GET `
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw?api-version=$preview" `
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace?api-version=$preview" `
   --query "{state:properties.provisioningState, mi:identity.principalId}"
 ```
 
-Save the `mi` value as `$gwMi`. Also capture `$gwTenant = (az account show --query tenantId -o tsv)`.
+Save the `mi` value as `$namespaceMi`. Also capture `$namespaceTenant = (az account show --query tenantId -o tsv)`.
 
 ---
 
 ## Tutorial A — Recurrence trigger to your webhook
 
-**Goal:** every 5 minutes, the gateway POSTs to `https://your-webhook.example.com/ping`.
+**Goal:** every 5 minutes, the namespace POSTs to `https://your-webhook.example.com/ping`.
 
 ### A.1 Create the trigger config
 
@@ -78,7 +78,7 @@ $triggerBody = @{
 
 $tmp = New-TemporaryFile; Set-Content $tmp $triggerBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw/triggerConfigs/tut-recur?api-version=$preview" `
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace/triggerConfigs/tut-recur?api-version=$preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -87,7 +87,7 @@ Remove-Item $tmp
 
 ```bash
 az rest --method GET \
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw/triggerConfigs/tut-recur?api-version=$preview" \
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace/triggerConfigs/tut-recur?api-version=$preview" \
   --query "{state:properties.state, callback:properties.notificationDetails.callbackUrl}"
 ```
 
@@ -95,7 +95,7 @@ Within 5 minutes, check `triggerConfigs/tut-recur/runs`:
 
 ```bash
 az rest --method GET \
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw/triggerConfigs/tut-recur/runs?api-version=$preview" \
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace/triggerConfigs/tut-recur/runs?api-version=$preview" \
   --query "value[].{status:properties.status, start:properties.startTime, end:properties.endTime}" -o table
 ```
 
@@ -125,14 +125,14 @@ $triggerBody = @{
 # Re-PUT with the same URL
 ```
 
-The gateway will mint a token with its system-assigned MI for `audience` and
+The namespace will mint a token with its system-assigned MI for `audience` and
 attach it as `Authorization: Bearer ...`.
 
 ### A.4 Cleanup (Tutorial A only)
 
 ```bash
 az rest --method DELETE \
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw/triggerConfigs/tut-recur?api-version=$preview"
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace/triggerConfigs/tut-recur?api-version=$preview"
 ```
 
 ---
@@ -140,7 +140,7 @@ az rest --method DELETE \
 ## Tutorial B — Connector event trigger from SharePoint
 
 **Goal:** when a new file appears in `Shared Documents` of a SharePoint site, the
-gateway POSTs the file metadata to your webhook.
+namespace POSTs the file metadata to your webhook.
 
 ### B.1 Create a SharePoint connection
 
@@ -152,7 +152,7 @@ $connBody = @{
 
 $tmp = New-TemporaryFile; Set-Content $tmp $connBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw/connections/sp-conn?api-version=$preview" `
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace/connections/sp-conn?api-version=$preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -167,11 +167,11 @@ Confirm `Connected`:
 
 ```bash
 az rest --method GET \
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw/connections/sp-conn?api-version=$preview" \
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace/connections/sp-conn?api-version=$preview" \
   --query "properties.statuses[0].status"
 ```
 
-### B.3 Grant the gateway MI access to the connection
+### B.3 Grant the namespace MI access to the connection
 
 ```powershell
 $aclBody = @{
@@ -179,14 +179,14 @@ $aclBody = @{
   properties = @{
     principal = @{
       type = "ActiveDirectory"
-      identity = @{ objectId = $gwMi; tenantId = $gwTenant }
+      identity = @{ objectId = $namespaceMi; tenantId = $namespaceTenant }
     }
   }
 } | ConvertTo-Json -Depth 5 -Compress
 
 $tmp = New-TemporaryFile; Set-Content $tmp $aclBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw/connections/sp-conn/accessPolicies/gateway-acl?api-version=$preview" `
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace/connections/sp-conn/accessPolicies/namespace-acl?api-version=$preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -236,7 +236,7 @@ $triggerBody = @{
 
 $tmp = New-TemporaryFile; Set-Content $tmp $triggerBody
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw/triggerConfigs/tut-spnewfile?api-version=$preview" `
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace/triggerConfigs/tut-spnewfile?api-version=$preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
@@ -257,7 +257,7 @@ az rest --method GET --url ".../triggerConfigs/tut-spnewfile/runs?api-version=$p
 
 ```bash
 az rest --method DELETE --url ".../triggerConfigs/tut-spnewfile?api-version=$preview"
-az rest --method DELETE --url ".../connections/sp-conn/accessPolicies/gateway-acl?api-version=$preview"
+az rest --method DELETE --url ".../connections/sp-conn/accessPolicies/namespace-acl?api-version=$preview"
 az rest --method DELETE --url ".../connections/sp-conn?api-version=$preview"
 ```
 
@@ -267,7 +267,7 @@ az rest --method DELETE --url ".../connections/sp-conn?api-version=$preview"
 
 ```bash
 az rest --method DELETE \
-  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$gw?api-version=$preview"
+  --url "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/connectorGateways/$namespace?api-version=$preview"
 
 az group delete --name $rg --yes --no-wait
 ```
