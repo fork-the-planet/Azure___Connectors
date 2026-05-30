@@ -265,7 +265,17 @@ The `name` value from this list is exactly what goes into `operations[].name`.
 ## Access policies on the MCP server config
 
 The MCP endpoint accepts callers based on access policies on the config itself.
-Grant access to whoever (user, MI, app) needs to call the MCP tools:
+Grant access to whoever (user, group) needs to call the MCP tools.
+
+**Important — MCP access-policy schema differs from connection access policies:**
+
+1. The body needs BOTH a `principal.type` (must be `"ActiveDirectory"`) AND a
+   sibling `properties.principalType` (must be `"User"` or `"Group"` —
+   `"ActiveDirectory"` is NOT accepted here, and there is no MI/ServicePrincipal
+   option). Sending only one of the two fields will fail validation.
+2. The access-policy **name in the URL must equal the principal's `objectId`**
+   (case-insensitive). The server-side validator rejects any other name.
+3. `objectId` and `tenantId` must be well-formed GUIDs.
 
 ```powershell
 $aclBody = @{
@@ -275,14 +285,26 @@ $aclBody = @{
       type = "ActiveDirectory"
       identity = @{ objectId = "{caller_object_id}"; tenantId = "{tenant_id}" }
     }
+    principalType = "User"   # or "Group"
   }
 } | ConvertTo-Json -Depth 5 -Compress
 $tmp = New-TemporaryFile; Set-Content $tmp $aclBody
+# IMPORTANT: the path segment after /accessPolicies/ must equal {caller_object_id}.
 az rest --method PUT `
-  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/mcpServerConfigs/{mcp_name}/accessPolicies/{policy_name}?api-version=2026-05-01-preview" `
+  --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/mcpServerConfigs/{mcp_name}/accessPolicies/{caller_object_id}?api-version=2026-05-01-preview" `
   --body "@$tmp"
 Remove-Item $tmp
 ```
+
+For the signed-in user, get `{caller_object_id}` with
+`az ad signed-in-user show --query id -o tsv`. For another user,
+`az ad user show --id <upn> --query id -o tsv`. For a group,
+`az ad group show --group <name> --query id -o tsv`.
+
+> ⚠️ Managed identities and service principals are NOT currently supported as
+> MCP access-policy principals — only Entra users and groups. If a non-user
+> caller needs access (e.g., another Azure resource's MI), use a group and add
+> that principal to the group.
 
 List existing policies:
 
