@@ -22,13 +22,74 @@ az rest --method GET \
 ```
 
 Present operations to the user. After selection, fetch the full Swagger (see
-[direct-api.md](direct-api.md) §1) to find the operation's parameter list. For each
-parameter:
+[direct-api.md](direct-api.md) §1) to find the operation's parameter list.
 
-- **Has `x-ms-dynamic-*`** → resolve via [dynamic-values.md](dynamic-values.md) and **STOP** for user selection
-- **Static enum** → present choices and **STOP**
-- **Free-form with obvious default** (e.g., `folderPath=Inbox`) → use default, inform user
-- **Free-form, no default** → ask the user
+### 2a. Enumerate every parameter — including body sub-properties
+
+Trigger parameters are baked at config time (there's no `agentParameters` for
+triggers — it's `parameters[]` and every entry has a fixed `value`). But the
+enumeration step is the same as for MCP:
+
+1. List all top-level `parameters[]` entries (`in: path | query | body | header`).
+2. For any `body` parameter whose schema is an object (resolve `$ref` to
+   `definitions/<Name>`), enumerate its `properties` and required fields.
+   Recurse into nested objects and `items` of arrays.
+3. For each leaf (top-level OR nested body sub-property), classify:
+   - **Has `x-ms-dynamic-*`** → resolve via [dynamic-values.md](dynamic-values.md) and **STOP** for user selection
+   - **Static enum** → present choices and **STOP**
+   - **Free-form with obvious default** (e.g., `folderPath=Inbox`) → use default, inform user
+   - **Free-form, no default** → **STOP** and ask the user
+
+> **STOP-and-ask applies to every parameter — including required body
+> sub-properties.** Required fields cannot be skipped or the trigger will fail
+> at subscribe time or first fire.
+
+### 2b. Wire shape — nested objects for body / dotted-path leaves
+
+Triggers use a single `parameters[]` array (no user vs agent split). Each entry
+is `{name, value}` where `value` may be a scalar OR a complex object. There are
+three rules for assembling it (mirroring Cascade's `serializeTriggerParams`):
+
+| Param shape (from Swagger) | Wire entry |
+|---|---|
+| Top-level scalar (`folderPath`, `groupId`) | `{ "name": "folderPath", "value": "Inbox" }` |
+| Top-level object (non-body), with dotted leaf names like `filter.from` | `{ "name": "filter", "value": { "from": "..." } }` — group dotted entries under their root |
+| **Any body-sourced leaf** (the Swagger `body` parameter or any of its nested sub-properties) | **All body leaves are collected into ONE entry named literally `"body"`** whose `value` is the nested object. Dotted leaf names like `repository.owner` are placed at their nested path inside `body`. |
+
+> **Critical:** The wrapper name for body params is **literally the string `"body"`**,
+> NOT the Swagger body parameter's own name. (Teams' Swagger declares the body
+> param as `requestBody`, but the runtime expects the entry to be named `body`.)
+> This is a trigger-ARM-config convention — different from MCP, where the body
+> wrapper preserves the Swagger name (e.g. `emailMessage`). See
+> [mcp-server-config.md](mcp-server-config.md) §"Body parameters" for the MCP convention.
+
+**Example — single-body trigger** (e.g. a connector with `body.filter.labels`):
+
+```powershell
+parameters = @(
+  @{ name = "groupId"; value = "abc..." }   # top-level scalar
+  @{
+    name  = "body"                           # literal "body" wrapper
+    value = @{
+      filter = @{                            # nested object built from
+        labels = @("bug","release")          # what the user supplied
+      }
+      includeAttachments = $true
+    }
+  }
+)
+```
+
+**Anti-pattern (do NOT do this)** — keeping the body leaves as flat dotted
+parameter names. The runtime won't route them:
+
+```powershell
+# WRONG — flat dotted names won't be unwrapped server-side
+parameters = @(
+  @{ name = "body.filter.labels"; value = "bug,release" }
+  @{ name = "body.includeAttachments"; value = $true }
+)
+```
 
 > **Polling cadence:** if the operation has neither `x-ms-notification` nor
 > `x-ms-notification-content` in its Swagger, it polls (default ~3 min). Inform
@@ -66,7 +127,7 @@ $triggerBody = @{
     }
     state = "Enabled"
   }
-} | ConvertTo-Json -Depth 8 -Compress
+} | ConvertTo-Json -Depth 20 -Compress   # -Depth 20+ for nested body objects
 
 $tmp = New-TemporaryFile; Set-Content $tmp $triggerBody
 az rest --method PUT `
@@ -234,6 +295,9 @@ and what HTTP status came back.
 | Putting `callbackUrl` at `properties.callbackUrl` | Goes under `properties.notificationDetails.callbackUrl` |
 | Putting `parameters` inside `connectionDetails` | Goes at `properties.parameters` (sibling of `connectionDetails`) |
 | Using `callbackTarget` | That field does not exist. Use `notificationDetails`. |
+| **Body sub-properties emitted as flat dotted-name params** (e.g. `body.filter.labels`) | The runtime won't unwrap them. Build a nested object and emit it as `{ name = "body"; value = @{ filter = @{ labels = ... } } }`. See §2b. |
+| **Body wrapper named after the Swagger param** (e.g. `requestBody` for Teams) | Triggers always use the literal string `"body"`. The Swagger body param's own name is irrelevant. (This is opposite to MCP, where the body wrapper preserves the Swagger name.) |
+| **`ConvertTo-Json -Depth` too shallow** → nested objects coerced to `"System.Collections.Hashtable"` strings | Use `-Depth 20` (or higher) when serializing trigger configs that contain nested body objects. Verify with a GET after the PUT. |
 | Forgetting `gateway-acl` on a connector-event trigger | Subscription fails silently — trigger state may show `Enabled` but never fires. Create the ACL. |
 | Inline JSON `--body '...'` in PowerShell | "Unsupported Media Type" — always `@$tmpFile`. See [gotchas.md](gotchas.md). |
 | `ManagedServiceIdentity` auth without an audience | `audience` is required (non-empty). Ask the user for it; if they don't provide one, default to `https://management.azure.com/`. |

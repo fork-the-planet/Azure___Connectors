@@ -52,10 +52,10 @@ ngrok, anywhere) and you choose how the gateway authenticates to it.
 | **Execute, don't ask** | Once you have inputs, run the commands. Don't ask "Can I run this?" |
 | **`az rest` only** | No `az connectorgateway` or other extensions exist. Use `az rest` for ARM and `az rest --resource` for data-plane. |
 | **Always `@$tmpFile`** | For `az rest --body` in PowerShell — inline JSON breaks quoting. See [gotchas.md](references/gotchas.md). |
-| **Trigger body schema** | Properties root contains: `type` OR `connectionDetails`+`operationName`+`parameters`, plus `notificationDetails` (`callbackUrl`+`authentication`+`body?`). See [trigger-setup.md](references/trigger-setup.md). |
+| **Trigger body schema** | Properties root contains: `type` OR `connectionDetails`+`operationName`+`parameters`, plus `notificationDetails` (`callbackUrl`+`authentication`+`body?`). **Body-sourced leaves (top-level body param + every nested sub-property) are aggregated into ONE `parameters[]` entry whose `name` is literally `"body"` and whose `value` is the nested object** (dotted leaf names like `filter.labels` get rolled up via `setNestedValue`). The wrapper name `"body"` is independent of the Swagger body parameter's own name. Non-body dotted leaves are grouped under their root segment. See [trigger-setup.md](references/trigger-setup.md) §2b. |
 | **Trigger needs `gateway-acl`** | For connector-event triggers, the gateway MI must have an access policy on the connection. See [trigger-setup.md](references/trigger-setup.md) Step 4. |
 | **MCP user params** | Each `userParameters[]` entry is a **fixed value** for a connector-operation parameter (resolved via `dynamic-values` against the connection at config time). Each `agentParameters[]` entry declares a JSON-Schema input the **caller (LLM) supplies** at tool-call time. **Every required parameter (including required body sub-properties) MUST appear in one of the two arrays** — the runtime rejects the call with `missing required property '<path>'` otherwise. See [mcp-server-config.md](references/mcp-server-config.md). |
-| **MCP per-parameter triage** | **STOP and ask the user, for each operation parameter (path/query/body field, including each required body sub-property), whether it should be a fixed `userParameter`, a caller-supplied `agentParameter`, or skipped (optional only).** Do this **before** the `mcpServerConfigs` PUT, even when no `x-ms-dynamic-*` markers are present. Decompose the body's object schema and triage each leaf. See [mcp-server-config.md](references/mcp-server-config.md) §"Per-parameter triage workflow". |
+| **MCP per-parameter triage** | **STOP and ask the user, for each operation parameter (path/query/body field, including each required body sub-property), whether it should be a fixed `userParameter`, a caller-supplied `agentParameter`, or skipped (optional only).** Do this **before** the `mcpServerConfigs` PUT, even when no `x-ms-dynamic-*` markers are present. Decompose the body's object schema and triage each leaf. **For MCP, body wrapper name = the Swagger body param's own name (e.g. `emailMessage`).** See [mcp-server-config.md](references/mcp-server-config.md) §"Per-parameter triage workflow". |
 | **Parallel execution** | Run independent ops (connections, ACLs, dynamic-value lookups, MCP operations) as parallel tool calls. |
 
 **When to STOP and ask the user:** subscription/resource group, gateway name, connection name, any parameter with dynamic values (teams/channels/folders/sites/lists), callback URL, callback authentication type, **MSI `audience` (if MSI auth chosen — default to `https://management.azure.com/` if user doesn't provide one)**, OAuth consent completion, **MCP per-parameter triage (`userParameter` vs `agentParameter` vs skip — for every path/query/body field, including each body sub-property)**.
@@ -170,7 +170,21 @@ Ask the user:
      --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.Web/locations/{location}/managedApis/{connector}/apiOperations?api-version=2016-06-01" \
      --query "value[?properties.trigger != null].{name:name, summary:properties.summary, trigger:properties.trigger}" -o table
    ```
-   Pick one with the user. Resolve any `x-ms-dynamic-*` parameters via [dynamic-values.md](references/dynamic-values.md). **STOP at every dynamic param.**
+   Pick one with the user. **Enumerate every parameter — including each
+   sub-property of a `body` object** (resolve `$ref`, recurse into nested
+   objects and array `items`). Triage each leaf:
+   - `x-ms-dynamic-*` → resolve via [dynamic-values.md](references/dynamic-values.md). **STOP at every dynamic param.**
+   - Static enum → present choices and **STOP** for user pick.
+   - Free-form with obvious default (e.g., `folderPath=Inbox`) → use default, inform user.
+   - Free-form with no default → **STOP and ask the user.**
+
+   **When assembling `parameters[]`, build a nested object — do NOT emit dotted
+   leaf names.** All body-sourced leaves (top-level body + every nested
+   sub-property) collapse into ONE entry whose `name` is **literally the string
+   `"body"`** (NOT the Swagger body parameter's name) and whose `value` is the
+   nested object. Non-body dotted leaves group under their root segment. See
+   [trigger-setup.md](references/trigger-setup.md) §2b for the exact pattern
+   and worked examples.
 
 3. **Recurrence / sliding window:** ask for `frequency` (Second/Minute/Hour/Day) and `interval`.
 
