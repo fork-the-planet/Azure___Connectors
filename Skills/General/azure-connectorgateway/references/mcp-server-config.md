@@ -146,6 +146,87 @@ You can have **both** a `userParameters` entry and an `agentParameters` entry
 for the same body root — `userParameters` provides fixed sub-fields, and
 `agentParameters` declares the caller-supplied sub-fields.
 
+### Worked example — Swagger → user answers → assembled MCP config
+
+For SharePoint `PostItem` the Swagger body is:
+
+```json
+"item": {                          // ← Swagger body param's own name
+  "in": "body",
+  "schema": {
+    "type": "object",
+    "required": ["Title"],
+    "properties": {
+      "Title":     { "type": "string" },
+      "Status":    { "type": "string", "enum": ["Open","Closed"] },
+      "Assignee":  { "type": "object", "properties": {
+                       "Email": { "type": "string" }
+                   } },
+      "Tags":      { "type": "array", "items": { "type": "string" } }
+    }
+  }
+}
+```
+
+**Step A — enumerate every leaf:** `Title`, `Status`, `Assignee.Email`, `Tags`.
+
+**Step B — STOP and ask per leaf** (record the user's answers):
+
+| Leaf | Type | User's choice |
+|---|---|---|
+| `Title` | Free-form, required | `agentParameter` (LLM supplies per call) |
+| `Status` | Static enum, required-ish | `userParameter`, fixed to `"Open"` (org default) |
+| `Assignee.Email` | Free-form | `agentParameter` |
+| `Tags` | Free-form array | `agentParameter` |
+
+**Step C — assemble the MCP operation entry** — body wrapper preserves the
+Swagger name (`item`), `userParameters` and `agentParameters` BOTH reference
+that same root:
+
+```powershell
+operations = @(
+  @{
+    name = "PostItem"
+    displayName = "Create SharePoint list item"
+    userParameters = @(
+      @{
+        name  = "item"                   # SAME root name as the Swagger body
+        value = @{ Status = "Open" }     # only the baked sub-fields
+      }
+    )
+    agentParameters = @(
+      @{
+        name = "item"                    # SAME root name — split with userParameters
+        schema = @{
+          type = "object"
+          required = $true
+          properties = @{
+            Title    = @{ type = "string"; required = $true; description = "List item title." }
+            Assignee = @{ type = "object"; properties = @{
+                           Email = @{ type = "string"; description = "Assignee email." }
+                         } }
+            Tags     = @{ type = "array"; items = @{ type = "string" }; description = "Tags." }
+            # Status omitted from the schema — it's baked above
+          }
+        }
+      }
+    )
+  }
+)
+```
+
+At runtime the gateway merges `userParameters["item"]` (fixed `Status="Open"`)
+with whatever the LLM supplied for `agentParameters["item"]` and POSTs the
+combined object to the connector.
+
+> **Mental model — symmetric with triggers:** treat the user's per-leaf answers
+> as a flat `Record<dottedPath, choice>` map, then assemble two nested objects
+> per body root — one whose values are baked (`userParameters`) and one whose
+> values become a JSON schema (`agentParameters`). The wrapper name is the
+> Swagger body param's name (e.g. `item`, `emailMessage`) — NOT literal `"body"`
+> like triggers use. See [trigger-setup.md](trigger-setup.md) §2c for the
+> trigger-side flow.
+
 > **Heads up — `ConvertTo-Json` depth.** PowerShell defaults to depth 2 and the
 > nested body schemas above are easily 4–6 levels deep. Always serialize with
 > `-Depth 20` (or higher), otherwise inner properties will be silently flattened

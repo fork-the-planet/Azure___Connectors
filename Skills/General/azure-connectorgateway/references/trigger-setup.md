@@ -91,6 +91,80 @@ parameters = @(
 )
 ```
 
+### 2c. Worked example — Swagger → user answers → assembled body
+
+For Teams `PostMessageToChannelV3` the Swagger body is:
+
+```json
+"requestBody": {                 // ← Swagger body param's own name
+  "in": "body",
+  "schema": {
+    "type": "object",
+    "required": ["recipient"],
+    "properties": {
+      "recipient": {
+        "type": "object",
+        "required": ["groupId", "channelId"],
+        "properties": {
+          "groupId":   { "type": "string", "x-ms-dynamic-values": {...} },
+          "channelId": { "type": "string", "x-ms-dynamic-values": {...} }
+        }
+      },
+      "messageBody": {
+        "type": "object",
+        "properties": {
+          "content":     { "type": "string" },
+          "contentType": { "type": "string", "enum": ["html","text"] }
+        }
+      },
+      "subject": { "type": "string" }
+    }
+  }
+}
+```
+
+**Step A — enumerate every leaf:** `recipient.groupId`, `recipient.channelId`,
+`messageBody.content`, `messageBody.contentType`, `subject`. Required ones:
+`recipient.groupId`, `recipient.channelId` (parents implied).
+
+**Step B — STOP and ask per leaf** (record the user's answers):
+
+| Leaf | Source | User-supplied answer |
+|---|---|---|
+| `recipient.groupId` | `x-ms-dynamic-values` → `GetAllTeams` → STOP, user picks "Engineering" | value-path = `"abc-team-id"` |
+| `recipient.channelId` | `x-ms-dynamic-values` → `GetChannelsForGroup(groupId)` → STOP, user picks "general" | `"19:def@thread.tacv2"` |
+| `messageBody.content` | Free-form, ask user | `"Build broken on main"` |
+| `messageBody.contentType` | Static enum, ask user (default `text`) | `"text"` |
+| `subject` | Free-form, optional, ask user | *(skipped)* |
+
+**Step C — assemble the body as ONE nested object** named literally `"body"`
+(NOT `"requestBody"`):
+
+```powershell
+parameters = @(
+  @{
+    name  = "body"                       # literal "body" — NOT "requestBody"
+    value = @{
+      recipient = @{                     # assembled from recipient.* leaves
+        groupId   = "abc-team-id"
+        channelId = "19:def@thread.tacv2"
+      }
+      messageBody = @{                   # assembled from messageBody.* leaves
+        content     = "Build broken on main"
+        contentType = "text"
+      }
+      # subject omitted because the user skipped it
+    }
+  }
+)
+```
+
+> **Mental model:** treat the user's per-leaf answers as a flat
+> `Record<dottedPath, value>` map, then `setNestedValue` each entry into a
+> single accumulator object whose root is `body`. That accumulator becomes one
+> `parameters[]` entry. This mirrors Cascade's `serializeTriggerParams` exactly
+> (`src\Cascade.Portal.Client\src\components\ConnectorGateways\TriggerWizard\utils\serializeTriggerParams.ts`).
+
 > **Polling cadence:** if the operation has neither `x-ms-notification` nor
 > `x-ms-notification-content` in its Swagger, it polls (default ~3 min). Inform
 > the user; if they want a different cadence, omit `type` and add a `recurrence`
