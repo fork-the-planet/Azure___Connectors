@@ -35,7 +35,10 @@ credential.
             "displayName": "Send email",
             "description": "Send an email via Office 365.",
             "userParameters": [
-              { "name": "from", "displayName": "From", "value": "alice@contoso.com", "displayValue": "Alice" }
+              { "name": "from", "value": "alice@contoso.com" }
+            ],
+            "agentParameters": [
+              { "name": "emailMessage", "schema": { "type": "object", "properties": { "To": { "type": "string", "required": true }, "Subject": { "type": "string" }, "Body": { "type": "string" } } } }
             ]
           }
         ]
@@ -58,39 +61,104 @@ credential.
 | `operations[].name` | required | The operation `name` from the connector's `apiOperations` (e.g., `Send_Email_(V2)`) |
 | `operations[].displayName` | required | Tool name shown to the LLM |
 | `operations[].description` | optional | Tool description shown to the LLM — write it for the LLM, not for humans |
-| `operations[].userParameters[]` | optional | **Pre-bound** values for operation parameters — see below |
+| `operations[].userParameters[]` | optional | **Pre-bound (fixed)** values for operation parameters — see "User vs agent" below |
+| `operations[].agentParameters[]` | optional | **Caller-supplied (LLM-at-call-time)** parameters, declared as JSON Schema — see "User vs agent" below |
 
-### `userParameters` — pre-bound parameter values
+### `userParameters` vs `agentParameters` — every required field must appear in one of them
 
-Each entry in `userParameters[]` is a parameter whose value is **fixed at config
-time** rather than supplied by the LLM at call time. Typical examples:
+This is the **single most important rule** for MCP server configs. The runtime
+validates every required parameter of the operation (path, query, body —
+including required body sub-properties) against the union of `userParameters`
+and `agentParameters`. If a required field is missing from both, the endpoint
+fails at invoke time with errors like:
 
-- "Always post to this Teams channel"
-- "Always send from this mailbox"
-- "Always upload to this folder"
+```
+The API operation 'SendEmailV2' is missing required property 'emailMessage/To'.
+```
+
+| Array | Shape | Semantics |
+|---|---|---|
+| `userParameters[]` | `{ "name": "<param>", "value": <literal> }` | The value is **baked into the config** and sent on every tool call. The LLM cannot change it. |
+| `agentParameters[]` | `{ "name": "<param>", "schema": { "type": ..., "description": ..., "required": ..., "enum": ..., "properties": {...} } }` | The LLM **supplies the value on each tool call**. The schema becomes part of the MCP tool's input contract. |
+
+Decision rule for each operation parameter:
+
+- **Enumerable connector-supplied identifier** (team, channel, site, list, folder, file, database, table, mailbox) → bake as `userParameter` (use `dynamic-values` resolution — see below).
+- **Free-form caller-controlled content** (subject, message body, recipient email, search query) → declare as `agentParameter`.
+- **Required field with no obvious fixed value** → declare as `agentParameter` (so the LLM is forced to supply it).
+- **Optional field that should be hidden from the LLM** → omit entirely.
+
+> **STOP and ask the user for every operation parameter** before the PUT:
+> "Should `<paramName>` be a fixed value you set now, supplied by the LLM at
+> call time, or skipped (if optional)?" — do not guess. The LLM tool contract
+> is exactly what's declared here.
+
+### Body parameters — nested object decomposition
+
+When an operation has a `body` parameter whose schema is a complex object
+(e.g., Gmail `SendEmailV2`'s `emailMessage` body wraps `To`, `Subject`, `Body`,
+…), the body becomes **one entry** in `agentParameters` whose `schema.type` is
+`"object"` and whose `schema.properties` lists each inner field:
 
 ```json
 {
-  "name": "channelId",
-  "displayName": "Channel",
-  "value": "19:abc...@thread.tacv2",
-  "displayValue": "Logic Apps / general"
+  "name": "emailMessage",
+  "schema": {
+    "type": "object",
+    "required": true,
+    "properties": {
+      "To":         { "type": "string", "required": true, "description": "Recipient address(es), semicolon- or comma-separated." },
+      "Subject":    { "type": "string", "description": "Subject of the outgoing email." },
+      "Body":       { "type": "string", "description": "HTML body of the outgoing email." },
+      "Cc":         { "type": "string", "description": "Cc addresses." },
+      "Bcc":        { "type": "string", "description": "Bcc addresses." },
+      "Importance": { "type": "string", "enum": ["Normal","Low","High"], "description": "Importance." },
+      "Attachments": {
+        "type": "array",
+        "description": "Attachments to send with the email.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "Name":         { "type": "string", "description": "File name." },
+            "ContentBytes": { "type": "string", "format": "byte", "description": "Base64 content." },
+            "ContentType":  { "type": "string", "description": "MIME type." }
+          }
+        }
+      }
+    }
+  }
 }
 ```
 
-- `value` is what's sent to the connector (the ID/key)
-- `displayValue` is human-readable
-- Parameters **not** listed in `userParameters[]` remain LLM-supplied inputs at tool-call time
+Mirror Swagger faithfully: `type`, `format`, `description`, `enum`, and
+`required` (as a boolean on each sub-property — not the JSON Schema array form,
+this is the Connector-Gateway convention). For nested arrays use `items` with
+its own object schema.
 
-> Resolve dynamic IDs by running the parameter's `x-ms-dynamic-*` lookups
-> against the connection — exactly like [trigger-setup.md](trigger-setup.md) Step 2.
-> See [dynamic-values.md](dynamic-values.md). **STOP** at each dynamic param for user selection.
+To bake parts of the body as fixed values, use the **same wrapper name** in
+`userParameters` with `value` as an object literal:
 
-## Resolving dynamic parameters for MCP config
+```json
+{ "name": "emailMessage", "value": { "From": "alerts@contoso.com" } }
+```
 
-**Every connector operation parameter goes through this triage before the PUT.**
-This is the same logic as trigger setup, but applied to *all* operation
-parameters, not just the ones in `notificationDetails`.
+You can have **both** a `userParameters` entry and an `agentParameters` entry
+for the same body root — `userParameters` provides fixed sub-fields, and
+`agentParameters` declares the caller-supplied sub-fields.
+
+> **Heads up — `ConvertTo-Json` depth.** PowerShell defaults to depth 2 and the
+> nested body schemas above are easily 4–6 levels deep. Always serialize with
+> `-Depth 20` (or higher), otherwise inner properties will be silently flattened
+> into the string `"System.Collections.Hashtable"` and the PUT will succeed but
+> the runtime schema will be wrong.
+
+## Per-parameter triage workflow
+
+**Every connector operation parameter goes through this triage before the PUT —
+no exceptions, even when there are no `x-ms-dynamic-*` markers anywhere on the
+operation.** The body schema is part of the triage: a `body` parameter with a
+nested object schema must be decomposed into its sub-properties so each one is
+classified.
 
 ### Step 1: Get the connector's Swagger once
 
@@ -103,23 +171,45 @@ az rest --method GET \
 Find the operation by `operationId` and read its `parameters[]`. For each
 parameter, identify which extension is present.
 
-### Step 2: Triage every parameter
+### Step 2: Enumerate every parameter — including body sub-properties
 
-| Parameter has | What to do | Bake into `userParameters[]`? |
+For each operation:
+
+1. List all top-level parameters from the Swagger (`parameters[]`): each has `in`
+   ∈ `{path, query, body, header}` and a `name`.
+2. For any `body` parameter whose schema is an object (resolve `$ref` to
+   `definitions/<Name>`), enumerate its properties **and** its inner `required`
+   array. Recurse into nested objects and `items` of arrays.
+3. Note which fields are required at each level. Required fields MUST be
+   classified — they cannot be skipped.
+
+### Step 3: Triage every parameter — STOP and ASK per parameter
+
+**Bring the full parameter list to the user and ask, for each one:**
+
+> "Should this be a fixed value I bake now (`userParameter`), supplied by the
+> caller / LLM on each tool call (`agentParameter`), or skipped (if optional)?"
+
+| Parameter shape | Default recommendation to surface to the user | If `userParameter` chosen |
 |---|---|---|
-| `x-ms-dynamic-values` | Resolve via [dynamic-values.md](dynamic-values.md) §`x-ms-dynamic-values`. **STOP** for user pick. | Usually yes — IDs are not LLM-discoverable |
-| `x-ms-dynamic-list` | Same as `x-ms-dynamic-values` — resolve, **STOP** for user pick. | Usually yes |
-| `x-ms-dynamic-tree` | Walk the tree via [dynamic-values.md](dynamic-values.md) §`x-ms-dynamic-tree`. **STOP** at each level. | Usually yes — final `value` is opaque (e.g., `%252fShared%2520Documents`) |
-| `x-ms-dynamic-schema` | The parameter's **body shape** depends on a parent param. See §"Dynamic schema" below. | Bake the parent, then decide for the body |
-| `x-ms-dynamic-properties` | Same as `x-ms-dynamic-schema` (older variant). Handle identically. | Same as `x-ms-dynamic-schema` |
-| Static enum | Show choices, **STOP** for user pick. | Bake if the user wants it fixed; leave for LLM otherwise |
-| Free-form with obvious default | Use default, inform user. | Optional |
-| Free-form, no default | Ask the user whether to bake it or let the LLM supply it. | User's choice |
+| `x-ms-dynamic-values` | `userParameter` — IDs are not LLM-discoverable. Resolve via [dynamic-values.md](dynamic-values.md) §`x-ms-dynamic-values`. **STOP** for the user's pick. | Store the `value-path` field, not the display name |
+| `x-ms-dynamic-list` | `userParameter` — same as above. | Same |
+| `x-ms-dynamic-tree` | `userParameter` — final `value` is opaque (e.g., `%252fShared%2520Documents`). Walk the tree (§`x-ms-dynamic-tree`), **STOP** at each level. | Store the opaque token |
+| `x-ms-dynamic-schema` body | Bake the parent(s) as `userParameter`, then triage the resolved body fields the same way. See §"Dynamic schema" below. | The parent's `value-path` value |
+| `x-ms-dynamic-properties` | Same as `x-ms-dynamic-schema` (older variant). | Same |
+| Static enum on a fixed-meaning field | Either — `userParameter` if there's an obvious org default, otherwise `agentParameter` with `schema.enum`. | The exact enum value |
+| Required free-form caller content (`To`, `subject`, `body`, `query`) | `agentParameter` — declare the JSON Schema. | n/a |
+| Optional free-form | `agentParameter` (omit `required`) if the LLM should be able to use it, otherwise skip. | n/a |
 
-> **The "STOP for user pick" rule applies even for MCP config.** Never invent a
-> team / channel / site / folder / list / mailbox / database ID.
+> **Never invent a team / channel / site / folder / list / mailbox / database ID.**
+> Resolve dynamic values via `dynamicInvoke` and STOP at every dynamic param.
 
-### Step 3: Handle cascading dependencies
+> **Never silently skip a required field.** Every Swagger `required` (including
+> required sub-properties of a body object) must appear in `userParameters` or
+> `agentParameters`, or the runtime will fail with
+> `missing required property '<path>'` at the first tool invocation.
+
+### Step 4: Handle cascading dependencies
 
 Many parameters' `x-ms-dynamic-*` lookups **depend on prior parameters**. You
 must resolve the parents first and use the chosen `value` as input to the
@@ -146,17 +236,20 @@ To bake `groupId` + `channelId` into `userParameters[]`:
 3. Build the MCP config:
    ```json
    "userParameters": [
-     { "name": "groupId",   "displayName": "Team",    "value": "abc...", "displayValue": "Engineering" },
-     { "name": "channelId", "displayName": "Channel", "value": "19:def...@thread.tacv2", "displayValue": "general" }
+     { "name": "groupId",   "value": "abc..." },
+     { "name": "channelId", "value": "19:def...@thread.tacv2" }
+   ],
+   "agentParameters": [
+     { "name": "message", "schema": { "type": "object", "required": true, "properties": { "body": { "type": "object", "properties": { "content": { "type": "string", "required": true, "description": "Markdown / HTML message content." } } } } } }
    ]
    ```
-4. Leave `message` out of `userParameters[]` so the LLM supplies it per tool call.
+4. Declare `message` as an `agentParameter` so the LLM supplies it per tool call.
 
 > **Always pass the stored `value` (from `value-path`), not the display name
 > (from `value-title`)**, as input to child lookups. The connector rejects
 > display names with `NotFound` or empty results.
 
-### Step 4: Dynamic schema (body shape)
+### Step 5: Dynamic schema (body shape)
 
 When an operation's body parameter uses `x-ms-dynamic-schema` (e.g.,
 "Create item in SharePoint list" — the body fields are the list's columns),
@@ -180,35 +273,39 @@ az rest --method POST \
 #  x-ms-dynamic-schema.operationId, with the resolved dataset + table)
 ```
 
-The returned JSON schema is what the LLM will see as the tool's input shape
-for the body — confirm with the user before saving the MCP config.
+Decompose the returned JSON schema into one `agentParameter` per resolved
+field (or a single `agentParameter` whose `schema` mirrors the whole body
+object), and STOP-and-ask the user per the Step 3 triage. Confirm with the
+user before saving the MCP config.
 
-### Step 5: LLM-facing input schema
+### Step 6: LLM-facing input schema
 
-Parameters **not** in `userParameters[]` become LLM-supplied inputs. The
-gateway derives the MCP tool's input schema from those remaining parameters
-in the operation's Swagger. So:
+The MCP tool's input contract is **exactly** the union of `agentParameters[]`
+entries you declared in Step 3. `userParameters[]` are invisible to the LLM —
+they're baked into the outbound call. So:
 
-- Static parameters → straightforward type in the MCP tool input schema
-- `x-ms-dynamic-values` / `-list` left LLM-supplied → the LLM must guess
-  valid IDs; **this rarely works**. Prefer baking these as `userParameters[]`.
-- `x-ms-dynamic-tree` left LLM-supplied → almost never works (opaque tokens).
-  Bake it.
-- `x-ms-dynamic-schema` body left LLM-supplied with parents un-baked → the
-  body schema is unknown until tool-call time; LLM tool input becomes generic
-  `object`. **Bake the parents.**
+- Required body sub-property → must be an `agentParameter` (or baked as a
+  `userParameter`). Never left implicit.
+- `x-ms-dynamic-values` / `-list` left as `agentParameter` → the LLM must
+  guess valid IDs; **this rarely works**. Prefer baking these as `userParameters[]`.
+- `x-ms-dynamic-tree` left as `agentParameter` → almost never works (opaque
+  tokens). Bake it.
+- `x-ms-dynamic-schema` body left as `agentParameter` with parents un-baked →
+  the body schema is unknown until tool-call time; the MCP tool input becomes
+  generic `object`. **Bake the parents** as `userParameters`.
 
 **Rule of thumb:** if a parameter's value space is "anything the user might
-imagine" (a subject line, a message body, an email address), leave it for the
-LLM. If it's "one of an enumerable, connector-supplied set" (team, channel,
-site, list, folder, file, database, table), **bake it via dynamic resolution**.
+imagine" (a subject line, a message body, an email address), declare it as an
+`agentParameter`. If it's "one of an enumerable, connector-supplied set"
+(team, channel, site, list, folder, file, database, table), **bake it as a
+`userParameter` via dynamic resolution**.
 
 ## PUT the config
 
 ```powershell
 $body = @{
   properties = @{
-    description = "Office 365 productivity tools"
+    description = "Send emails via Office 365."
     connectors = @(
       @{
         name = "office365"
@@ -218,16 +315,30 @@ $body = @{
           @{
             name = "Send_Email_(V2)"
             displayName = "Send email"
-            description = "Send an email via Office 365."
+            description = "Send an email through Office 365. Caller must supply 'To'."
             userParameters = @(
-              @{ name = "from"; displayName = "From"; value = "alice@contoso.com"; displayValue = "Alice" }
+              @{ name = "from"; value = "alerts@contoso.com" }
+            )
+            agentParameters = @(
+              @{
+                name = "emailMessage"
+                schema = @{
+                  type = "object"
+                  required = $true
+                  properties = @{
+                    To      = @{ type = "string"; required = $true; description = "Recipient address(es), semicolon- or comma-separated." }
+                    Subject = @{ type = "string"; description = "Subject line." }
+                    Body    = @{ type = "string"; description = "HTML body." }
+                  }
+                }
+              }
             )
           }
         )
       }
     )
   }
-} | ConvertTo-Json -Depth 10 -Compress
+} | ConvertTo-Json -Depth 20 -Compress    # IMPORTANT: -Depth 20+ for nested body schemas
 
 $tmp = New-TemporaryFile; Set-Content $tmp $body
 az rest --method PUT `
@@ -235,6 +346,12 @@ az rest --method PUT `
   --body "@$tmp"
 Remove-Item $tmp
 ```
+
+> **Verify after the PUT** — `GET` the config and check that the nested
+> `agentParameters[].schema.properties.<field>` are present as objects, NOT as
+> the literal string `"System.Collections.Hashtable"`. That string means
+> `ConvertTo-Json -Depth` was too shallow — re-serialize with `-Depth 20` (or
+> higher) and re-PUT.
 
 ## Get the endpoint URL
 
@@ -366,3 +483,6 @@ Validation rules (from BPM tests):
 | Guessing dynamic-value IDs in `userParameters[].value` | Always resolve via `dynamicInvoke` first ([dynamic-values.md](dynamic-values.md)). |
 | Forgetting access policies | The MCP endpoint will 403 your MCP client. Add the caller's objectId. |
 | Skipping consent on the underlying connection | Tool calls fail with 401 — go through [consent.md](consent.md) first. |
+| **Skipping required body sub-properties** | Endpoint fails at invoke time with `missing required property '<body>/<field>'`. Every Swagger `required` field — including nested body properties — MUST be declared in `userParameters` or `agentParameters`. Triage them per §"Per-parameter triage workflow". |
+| **Body params not nested under their root name** | The body becomes ONE `agentParameter` whose `name` is the body parameter's name (e.g., `emailMessage`) and whose `schema` is `{type:"object", properties: {...}}`. Don't flatten the inner fields to top-level entries. |
+| **`ConvertTo-Json -Depth` too shallow → `"System.Collections.Hashtable"` in the saved schema** | Use `-Depth 20` (or higher) when serializing the PUT body. After the PUT, GET the config and confirm nested properties are objects, not the truncation string. |

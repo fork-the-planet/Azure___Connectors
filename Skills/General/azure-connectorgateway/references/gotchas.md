@@ -22,6 +22,8 @@ Common issues for the generic connector-gateway skill and their fixes.
 | **MCP tool calls 401** | Underlying connection isn't consented or the consent expired. Re-run [consent.md](consent.md). |
 | **`resourceAuth` rejected on `ManagedMcpServer`** | `resourceAuth` is only valid on `HostedMcpServer`. Remove it. |
 | **MCP `userParameters[].value` is the display name** | The connector rejects it because it expects the underlying ID/key. Re-resolve via `dynamicInvoke` and store the `value-path` field. |
+| **MCP endpoint fails with `missing required property '<body>/<field>'`** | The operation's required body sub-property (e.g., `emailMessage/To`) wasn't declared in `userParameters` or `agentParameters`. Re-PUT with the body as a single `agentParameter` whose `schema.type` is `"object"` and whose `schema.properties` mirrors the Swagger body — see [mcp-server-config.md](mcp-server-config.md) §"Body parameters". |
+| **MCP config GET shows `"System.Collections.Hashtable"` inside `agentParameters[].schema.properties`** | `ConvertTo-Json -Depth` was too shallow when serializing the PUT body — nested objects got coerced to strings. Re-PUT with `-Depth 20` (or higher) and verify with GET. |
 | **`callbackTarget` rejected** | That field does not exist in the schema. Use `notificationDetails.callbackUrl`. |
 | **PowerShell `ConvertFrom-Json` fails on Swagger** | `az rest ... export=true` returns content that piping breaks. Always `-o json > $env:TEMP\swagger.json` first, then read the file. |
 | **Cleanup order** | Delete trigger configs and MCP server configs → delete access policies on connections → delete connections → delete gateway. Trigger configs hold subscriptions, so delete them first to avoid orphan webhooks. |

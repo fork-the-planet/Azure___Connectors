@@ -54,10 +54,11 @@ ngrok, anywhere) and you choose how the gateway authenticates to it.
 | **Always `@$tmpFile`** | For `az rest --body` in PowerShell — inline JSON breaks quoting. See [gotchas.md](references/gotchas.md). |
 | **Trigger body schema** | Properties root contains: `type` OR `connectionDetails`+`operationName`+`parameters`, plus `notificationDetails` (`callbackUrl`+`authentication`+`body?`). See [trigger-setup.md](references/trigger-setup.md). |
 | **Trigger needs `gateway-acl`** | For connector-event triggers, the gateway MI must have an access policy on the connection. See [trigger-setup.md](references/trigger-setup.md) Step 4. |
-| **MCP user params** | Each `userParameters[]` entry is the fixed value for a connector-operation parameter, resolved via `dynamic-values` against the connection at config time. See [mcp-server-config.md](references/mcp-server-config.md). |
+| **MCP user params** | Each `userParameters[]` entry is a **fixed value** for a connector-operation parameter (resolved via `dynamic-values` against the connection at config time). Each `agentParameters[]` entry declares a JSON-Schema input the **caller (LLM) supplies** at tool-call time. **Every required parameter (including required body sub-properties) MUST appear in one of the two arrays** — the runtime rejects the call with `missing required property '<path>'` otherwise. See [mcp-server-config.md](references/mcp-server-config.md). |
+| **MCP per-parameter triage** | **STOP and ask the user, for each operation parameter (path/query/body field, including each required body sub-property), whether it should be a fixed `userParameter`, a caller-supplied `agentParameter`, or skipped (optional only).** Do this **before** the `mcpServerConfigs` PUT, even when no `x-ms-dynamic-*` markers are present. Decompose the body's object schema and triage each leaf. See [mcp-server-config.md](references/mcp-server-config.md) §"Per-parameter triage workflow". |
 | **Parallel execution** | Run independent ops (connections, ACLs, dynamic-value lookups, MCP operations) as parallel tool calls. |
 
-**When to STOP and ask the user:** subscription/resource group, gateway name, connection name, any parameter with dynamic values (teams/channels/folders/sites/lists), callback URL, callback authentication type, **MSI `audience` (if MSI auth chosen — default to `https://management.azure.com/` if user doesn't provide one)**, OAuth consent completion.
+**When to STOP and ask the user:** subscription/resource group, gateway name, connection name, any parameter with dynamic values (teams/channels/folders/sites/lists), callback URL, callback authentication type, **MSI `audience` (if MSI auth chosen — default to `https://management.azure.com/` if user doesn't provide one)**, OAuth consent completion, **MCP per-parameter triage (`userParameter` vs `agentParameter` vs skip — for every path/query/body field, including each body sub-property)**.
 
 **When to EXECUTE immediately:** gateway/connection/trigger/MCP-config/access-policy CRUD, role assignments, dynamic-value lookups.
 
@@ -214,14 +215,36 @@ Ask the user:
    ```
    Each MCP "tool" maps to one connector operation under one connection.
 
-2. **For each operation, triage every parameter** through dynamic resolution before deciding what to bake. The four extension kinds (`x-ms-dynamic-values`, `-list`, `-tree`, `-schema`) **all apply** here, exactly like trigger setup. For each:
+2. **For each operation, triage every parameter — including each body sub-property.**
+
+   First enumerate every parameter from the Swagger:
+   - All `parameters[]` entries (`path` / `query` / `body` / `header`).
+   - For each `body` parameter whose schema is an object (resolve `$ref`),
+     enumerate its `properties` and the inner `required` array. Recurse into
+     nested objects and `items` of arrays.
+
+   Then resolve dynamic markers — the four extension kinds
+   (`x-ms-dynamic-values`, `-list`, `-tree`, `-schema`) **all apply** here,
+   exactly like trigger setup:
    - `x-ms-dynamic-values` / `-list` → `dynamicInvoke` the lookup operation, **STOP** for user pick, store the `value-path` value.
    - `x-ms-dynamic-tree` → walk the tree (root → children), **STOP** at each level, store the final opaque token.
-   - `x-ms-dynamic-schema` / `-properties` → resolve schema after parents are picked (the body shape comes from the connector). Bake the parents so the LLM gets a stable tool shape.
+   - `x-ms-dynamic-schema` / `-properties` → resolve schema after parents are picked. Bake the parents so the LLM gets a stable tool shape.
    - Cascading params (e.g., channel depends on team): always resolve parents first; pass their `value` (not display name) to child lookups.
-   - See [mcp-server-config.md](references/mcp-server-config.md) §"Resolving dynamic parameters for MCP config" and [dynamic-values.md](references/dynamic-values.md).
-   
-   Decide for each: bake into `userParameters[]` (fixed at config time) or leave for the LLM (free-form fields like subject/body). **Rule of thumb:** if the value space is enumerable connector data (team, channel, site, list, folder, file, db, table), **bake it**; if it's "anything the user might imagine" (subject, message body, email address), leave it for the LLM. **STOP at every dynamic param.**
+
+   **STOP and ask the user, for every parameter (and every required body
+   sub-property)**, whether it should be:
+
+   | Choice | What it means |
+   |---|---|
+   | **`userParameter`** | Bake a fixed value now (`{name, value}`). LLM cannot change it. Use this for enumerable connector IDs (team/channel/site/list/folder/file/db/table) and for org-default fields. |
+   | **`agentParameter`** | LLM supplies on each call (`{name, schema}`). Use this for free-form content (subject/body/recipient) and for required fields with no fixed value. |
+   | **skip** | Only valid if the field is optional (not in the Swagger `required` array). |
+
+   **Required fields cannot be skipped.** Body sub-properties are nested under
+   one `agentParameter` whose `schema.type` is `"object"` and whose
+   `schema.properties` mirrors the body. See
+   [mcp-server-config.md](references/mcp-server-config.md) §"Per-parameter
+   triage workflow" and [dynamic-values.md](references/dynamic-values.md).
 
 3. **PUT the MCP server config.** Body shape:
    ```json
@@ -239,7 +262,10 @@ Ask the user:
                "displayName": "Send Email",
                "description": "Send an email via Office 365.",
                "userParameters": [
-                 { "name": "from", "displayName": "From", "value": "alice@contoso.com", "displayValue": "Alice" }
+                 { "name": "from", "value": "alerts@contoso.com" }
+               ],
+               "agentParameters": [
+                 { "name": "emailMessage", "schema": { "type": "object", "required": true, "properties": { "To": { "type": "string", "required": true }, "Subject": { "type": "string" }, "Body": { "type": "string" } } } }
                ]
              }
            ]
@@ -249,6 +275,11 @@ Ask the user:
    }
    ```
    PUT to: `.../connectorGateways/{gw}/mcpServerConfigs/{name}?api-version=2026-05-01-preview`
+
+   > **Always serialize with `ConvertTo-Json -Depth 20`** (or higher). The
+   > default depth (2) silently flattens nested body schemas to the literal
+   > string `"System.Collections.Hashtable"`. GET the config after the PUT and
+   > verify the nested properties are real objects.
 
 4. **GET the config** and return `properties.mcpEndpointUrl` — that's the URL the MCP
    client points at. See [mcp-server-config.md](references/mcp-server-config.md) for the auth-mode + access-policy details.
