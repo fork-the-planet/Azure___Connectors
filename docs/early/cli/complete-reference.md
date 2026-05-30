@@ -517,7 +517,7 @@ after consent. The hex string after `code=` is what `confirm-consent-code --code
 
 ### `connector-namespace update` ignores my `--set properties.foo=bar`
 
-By design — see [Update semantics](#update-semantics). Only `--tags` and `--api-hub-environment-id` are honored. To change any other field, delete and recreate the namespace.
+By design — see [Update semantics](#update-semantics). Only `--tags` is honored (the `TagOnlyNamespaceUpdate` recipe hides every other field, including `--api-hub-environment-id`). To change any other field, delete and recreate the namespace.
 
 [↑ Back to top](#contents)
 
