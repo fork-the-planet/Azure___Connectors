@@ -2,10 +2,10 @@
 # Install (or uninstall) the `az connector-namespace` Azure CLI extension.
 #
 # Usage:
-#   # Default: install latest (resolves https://aka.ms/connector-namespace-whl)
+#   # Default: install the version pinned below ($DEFAULT_VERSION)
 #   curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh | sh
 #
-#   # Pin a specific version (downloads from the matching GitHub Release):
+#   # Pin a different version:
 #   curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh \
 #     | CONNECTOR_NAMESPACE_VERSION=1.0.0b9 sh
 #
@@ -18,7 +18,9 @@ set -eu
 REPO="Azure/Connectors"
 EXT_NAME="connector-namespace"
 PKG_NAME="connector_namespace"
-LATEST_URL="https://aka.ms/connector-namespace-whl"
+
+# Single source of truth — bump this with each new release.
+DEFAULT_VERSION="1.0.0b9"
 
 UNINSTALL=0
 for arg in "$@"; do
@@ -44,15 +46,15 @@ if [ "$UNINSTALL" -eq 1 ]; then
 fi
 
 # Resolve wheel URL.
-# - Default: a stable aka.ms shortlink that always points at the latest wheel.
-# - If CONNECTOR_NAMESPACE_VERSION is set, pin to the matching GitHub Release.
+# - If CONNECTOR_NAMESPACE_VERSION is set, pin to that GitHub Release.
+# - Otherwise, use the script's DEFAULT_VERSION.
+VERSION="${CONNECTOR_NAMESPACE_VERSION:-$DEFAULT_VERSION}"
+WHEEL_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${PKG_NAME}-${VERSION}-py3-none-any.whl"
+
 if [ -n "${CONNECTOR_NAMESPACE_VERSION:-}" ]; then
-  VERSION="$CONNECTOR_NAMESPACE_VERSION"
-  WHEEL_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${PKG_NAME}-${VERSION}-py3-none-any.whl"
   echo "Installing '$EXT_NAME' v$VERSION (pinned via \$CONNECTOR_NAMESPACE_VERSION)"
 else
-  WHEEL_URL="$LATEST_URL"
-  echo "Installing '$EXT_NAME' (latest, via aka.ms shortlink)"
+  echo "Installing '$EXT_NAME' v$VERSION (default)"
 fi
 echo "  Wheel: $WHEEL_URL"
 echo ""

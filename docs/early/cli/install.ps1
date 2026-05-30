@@ -1,10 +1,10 @@
 # Install (or uninstall) the `az connector-namespace` Azure CLI extension.
 #
 # Usage:
-#   # Default: install latest (resolves https://aka.ms/connector-namespace-whl)
+#   # Default: install the version pinned below ($DefaultVersion)
 #   irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.ps1 | iex
 #
-#   # Pin a specific version (downloads from the matching GitHub Release):
+#   # Pin a different version:
 #   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.ps1))) -Version 1.0.0b9
 #
 #   # Uninstall:
@@ -18,10 +18,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$Repo      = 'Azure/Connectors'
-$ExtName   = 'connector-namespace'
-$PkgName   = 'connector_namespace'
-$LatestUrl = 'https://aka.ms/connector-namespace-whl'
+$Repo    = 'Azure/Connectors'
+$ExtName = 'connector-namespace'
+$PkgName = 'connector_namespace'
+
+# Single source of truth — bump this with each new release.
+$DefaultVersion = '1.0.0b9'
 
 # Check for Azure CLI
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
@@ -41,18 +43,26 @@ if ($Uninstall) {
 }
 
 # Resolve wheel URL.
-# - Default: a stable aka.ms shortlink that always points at the latest wheel.
 # - If -Version (or $env:CONNECTOR_NAMESPACE_VERSION) is set, pin to that GitHub Release.
+# - Otherwise, use the script's $DefaultVersion.
 if (-not $Version -and $env:CONNECTOR_NAMESPACE_VERSION) {
     $Version = $env:CONNECTOR_NAMESPACE_VERSION
+    $pinSource = '$env:CONNECTOR_NAMESPACE_VERSION'
+} elseif ($Version) {
+    $pinSource = '-Version'
 }
 
-if ($Version) {
-    $wheelUrl = "https://github.com/$Repo/releases/download/v$Version/${PkgName}-${Version}-py3-none-any.whl"
-    Write-Host "Installing '$ExtName' v$Version (pinned)"
+if (-not $Version) {
+    $Version = $DefaultVersion
+    $pinSource = ''
+}
+
+$wheelUrl = "https://github.com/$Repo/releases/download/v$Version/${PkgName}-${Version}-py3-none-any.whl"
+
+if ($pinSource) {
+    Write-Host "Installing '$ExtName' v$Version (pinned via $pinSource)"
 } else {
-    $wheelUrl = $LatestUrl
-    Write-Host "Installing '$ExtName' (latest, via aka.ms shortlink)"
+    Write-Host "Installing '$ExtName' v$Version (default)"
 }
 Write-Host "  Wheel: $wheelUrl"
 Write-Host ""
