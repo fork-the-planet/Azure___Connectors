@@ -59,7 +59,9 @@ $triggerBody = @{
       httpMethod  = "Post"
       authentication = @{
         type = "ManagedServiceIdentity"
-        audience = "api://my-api"
+        # audience is OPTIONAL — only set if callback is AAD-protected.
+        # ALWAYS ask the user; never default to the callback URL.
+        # audience = "api://my-api"
       }
     }
     state = "Enabled"
@@ -234,5 +236,5 @@ and what HTTP status came back.
 | Using `callbackTarget` | That field does not exist. Use `notificationDetails`. |
 | Forgetting `gateway-acl` on a connector-event trigger | Subscription fails silently — trigger state may show `Enabled` but never fires. Create the ACL. |
 | Inline JSON `--body '...'` in PowerShell | "Unsupported Media Type" — always `@$tmpFile`. See [gotchas.md](gotchas.md). |
-| `ManagedServiceIdentity` auth without an audience | Validation rejects it — `audience` is required. |
+| `ManagedServiceIdentity` with a fabricated audience | Token is minted for a meaningless audience; if the callback validates AAD tokens it returns `401 invalid audience`, otherwise MSI auth is providing no value. `audience` is **optional** — **always ask the user** whether to set one and what value to use; never default to the callback URL. See [notification-authentication.md](notification-authentication.md). |
 | `ManagedServiceIdentity` referencing a UAMI not on the gateway | Attach it to the gateway first (see [notification-authentication.md](notification-authentication.md)). |

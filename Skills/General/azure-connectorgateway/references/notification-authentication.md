@@ -47,15 +47,40 @@ You provide the full `<scheme> <parameter>`.
 
 ### 4) `ManagedServiceIdentity` — gateway uses its own MI
 
-The gateway acquires an Entra token for `audience` using its managed identity
-and sends it as `Authorization: Bearer {token}`.
+The gateway uses its managed identity to call the callback. If `audience` is
+provided, the gateway acquires an Entra token for that audience and sends it
+as `Authorization: Bearer {token}`. If `audience` is omitted, the gateway
+still calls using its MI (no AAD-protected token is minted for a specific
+resource).
 
-**System-assigned** (gateway must have `identity.type = SystemAssigned`):
+> ⚠️ **`audience` is OPTIONAL — ASK THE USER whether to set one. Never fabricate it.**
+> Only set `audience` if the callback endpoint is AAD-protected and the user
+> knows the resource URI of the AAD app guarding it (e.g.,
+> `api://my-app`, `https://management.azure.com/`, `https://graph.microsoft.com/`,
+> or the `Application ID URI` of a custom AAD app). The callback URL itself
+> is **NOT** a valid audience — do not default to it. If the callback isn't
+> AAD-protected (e.g., a generic webhook like Pipedream), omit `audience` and
+> proceed with just `type: ManagedServiceIdentity`.
+>
+> **STOP and ask the user** — offer:
+> - Skip the audience (recommended for non-AAD endpoints)
+> - Provide the audience of an AAD app they own
+> - Set up a new AAD app registration first (then come back with its Application ID URI)
+
+**System-assigned, no audience** (simplest — gateway must have `identity.type = SystemAssigned`):
+
+```json
+"authentication": {
+  "type": "ManagedServiceIdentity"
+}
+```
+
+**System-assigned with audience** (for AAD-protected callbacks):
 
 ```json
 "authentication": {
   "type": "ManagedServiceIdentity",
-  "audience": "https://your-api.example.com/"
+  "audience": "api://my-app"
 }
 ```
 
@@ -70,7 +95,7 @@ and sends it as `Authorization: Bearer {token}`.
 ```
 
 > Validation rules (from BPM `AIGatewayApiTests_NotificationAuthValidation_*`):
-> - `audience` is required (non-empty)
+> - `audience` is optional — omit it for non-AAD callbacks
 > - If `identity` is omitted → gateway must have a SystemAssigned identity
 > - If `identity` is set → it must be a valid `/subscriptions/.../userAssignedIdentities/{name}` resource ID AND that identity must already be attached to the gateway
 
