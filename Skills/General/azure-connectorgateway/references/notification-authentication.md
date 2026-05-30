@@ -53,29 +53,30 @@ as `Authorization: Bearer {token}`. If `audience` is omitted, the gateway
 still calls using its MI (no AAD-protected token is minted for a specific
 resource).
 
-> ⚠️ **`audience` is OPTIONAL — ASK THE USER whether to set one. Never fabricate it.**
-> Only set `audience` if the callback endpoint is AAD-protected and the user
-> knows the resource URI of the AAD app guarding it (e.g.,
-> `api://my-app`, `https://management.azure.com/`, `https://graph.microsoft.com/`,
-> or the `Application ID URI` of a custom AAD app). The callback URL itself
-> is **NOT** a valid audience — do not default to it. If the callback isn't
-> AAD-protected (e.g., a generic webhook like Pipedream), omit `audience` and
-> proceed with just `type: ManagedServiceIdentity`.
+> ⚠️ **ASK THE USER for `audience`. If they don't provide one, default to `https://management.azure.com/`.**
+> The audience is the AAD-protected resource the gateway acquires a token for.
+> Set it explicitly if the callback is AAD-protected and the user knows the
+> resource URI of the AAD app guarding it (e.g., `api://my-app`,
+> `https://graph.microsoft.com/`, `https://vault.azure.net/`, or a custom AAD
+> app's `Application ID URI`). The callback URL itself is **NOT** a valid
+> audience — do not default to it.
 >
-> **STOP and ask the user** — offer:
-> - Skip the audience (recommended for non-AAD endpoints)
-> - Provide the audience of an AAD app they own
-> - Set up a new AAD app registration first (then come back with its Application ID URI)
+> **Workflow:**
+> 1. Ask the user: "What AAD resource should the gateway acquire a token for? (e.g., the App ID URI of an AAD-registered API you control, `https://graph.microsoft.com/`, etc.) — leave blank to default to `https://management.azure.com/`."
+> 2. If the user provides an audience, use it.
+> 3. If the user declines, skips, or doesn't know → use `https://management.azure.com/` as the default. This is a real AAD-protected resource (ARM), so the gateway can mint a valid token for it. The callback may not validate the token, but at least nothing is fabricated.
+> 4. If the callback isn't AAD-protected (e.g., a generic webhook), tell the user that MSI auth is providing no real security benefit — they may want `QueryString` or no auth instead.
 
-**System-assigned, no audience** (simplest — gateway must have `identity.type = SystemAssigned`):
+**System-assigned with default audience** (simplest — gateway must have `identity.type = SystemAssigned`, user didn't specify):
 
 ```json
 "authentication": {
-  "type": "ManagedServiceIdentity"
+  "type": "ManagedServiceIdentity",
+  "audience": "https://management.azure.com/"
 }
 ```
 
-**System-assigned with audience** (for AAD-protected callbacks):
+**System-assigned with user-supplied audience** (for AAD-protected callbacks):
 
 ```json
 "authentication": {
@@ -95,7 +96,7 @@ resource).
 ```
 
 > Validation rules (from BPM `AIGatewayApiTests_NotificationAuthValidation_*`):
-> - `audience` is optional — omit it for non-AAD callbacks
+> - `audience` is required (non-empty) — if the user doesn't provide one, default to `https://management.azure.com/`
 > - If `identity` is omitted → gateway must have a SystemAssigned identity
 > - If `identity` is set → it must be a valid `/subscriptions/.../userAssignedIdentities/{name}` resource ID AND that identity must already be attached to the gateway
 

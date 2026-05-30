@@ -48,7 +48,7 @@ ngrok, anywhere) and you choose how the gateway authenticates to it.
 | **No generated notebooks/scripts** | Walk the user through interactively. Do NOT generate a standalone notebook or script. |
 | **No guessing dynamic values** | `x-ms-dynamic-*` → call the API, present results, STOP. Never assume a team/channel/folder/site/list. |
 | **No guessing the callback URL** | The callback URL is **always** user-provided. Ask for it explicitly. Do NOT invent one. |
-| **No guessing MSI audience** | For `ManagedServiceIdentity` callback auth, the `audience` field is **optional**. **Always ask the user** whether to set one — only set it if the callback is AAD-protected and they provide a real AAD-protected resource URI (e.g., an AAD app they own, `https://management.azure.com/`, etc.). The callback URL itself is NOT a valid audience. For non-AAD callbacks (e.g., webhook receivers), omit `audience`. Never fabricate. |
+| **MSI audience: ask, then default** | For `ManagedServiceIdentity` callback auth, **ask the user for `audience`** (the AAD-protected resource the gateway should acquire a token for, e.g. an AAD app they own, `https://graph.microsoft.com/`, etc.). If the user doesn't provide one, default to `https://management.azure.com/`. **Never** use the callback URL as the audience. |
 | **Execute, don't ask** | Once you have inputs, run the commands. Don't ask "Can I run this?" |
 | **`az rest` only** | No `az connectorgateway` or other extensions exist. Use `az rest` for ARM and `az rest --resource` for data-plane. |
 | **Always `@$tmpFile`** | For `az rest --body` in PowerShell — inline JSON breaks quoting. See [gotchas.md](references/gotchas.md). |
@@ -57,7 +57,7 @@ ngrok, anywhere) and you choose how the gateway authenticates to it.
 | **MCP user params** | Each `userParameters[]` entry is the fixed value for a connector-operation parameter, resolved via `dynamic-values` against the connection at config time. See [mcp-server-config.md](references/mcp-server-config.md). |
 | **Parallel execution** | Run independent ops (connections, ACLs, dynamic-value lookups, MCP operations) as parallel tool calls. |
 
-**When to STOP and ask the user:** subscription/resource group, gateway name, connection name, any parameter with dynamic values (teams/channels/folders/sites/lists), callback URL, callback authentication type, **whether to set an MSI `audience` (if MSI auth chosen)**, OAuth consent completion.
+**When to STOP and ask the user:** subscription/resource group, gateway name, connection name, any parameter with dynamic values (teams/channels/folders/sites/lists), callback URL, callback authentication type, **MSI `audience` (if MSI auth chosen — default to `https://management.azure.com/` if user doesn't provide one)**, OAuth consent completion.
 
 **When to EXECUTE immediately:** gateway/connection/trigger/MCP-config/access-policy CRUD, role assignments, dynamic-value lookups.
 
@@ -185,7 +185,7 @@ Ask the user:
    | `QueryString` | Add a `?key=value` automatically (e.g., Function App key) |
    | `Raw` | Send a literal `Authorization: <scheme> <parameter>` header |
    | `Basic` | HTTP Basic with `username`/`password` |
-   | `ManagedServiceIdentity` | Gateway calls using its own MI (system- or user-assigned). `audience` is **optional** — only set it if the callback is AAD-protected. **Always ask the user whether to set `audience`** — never fabricate one (the callback URL is NOT a valid audience). See [notification-authentication.md](references/notification-authentication.md). |
+   | `ManagedServiceIdentity` | Gateway acquires a token for `audience` using its own MI (system- or user-assigned). **Ask the user for `audience`** — if they don't provide one, default to `https://management.azure.com/`. Never use the callback URL as the audience. See [notification-authentication.md](references/notification-authentication.md). |
    | `ActiveDirectoryOAuth` | Gateway authenticates as an Entra app (tenant/clientId/secret/audience) |
    | `ClientCertificate` | Mutual TLS with a `pfx`/`password` |
 

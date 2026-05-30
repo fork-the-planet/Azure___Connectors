@@ -59,9 +59,9 @@ $triggerBody = @{
       httpMethod  = "Post"
       authentication = @{
         type = "ManagedServiceIdentity"
-        # audience is OPTIONAL — only set if callback is AAD-protected.
-        # ALWAYS ask the user; never default to the callback URL.
-        # audience = "api://my-api"
+        # Ask the user for audience. Default to https://management.azure.com/
+        # if they don't provide one. NEVER default to the callback URL.
+        audience = "https://management.azure.com/"
       }
     }
     state = "Enabled"
@@ -236,5 +236,6 @@ and what HTTP status came back.
 | Using `callbackTarget` | That field does not exist. Use `notificationDetails`. |
 | Forgetting `gateway-acl` on a connector-event trigger | Subscription fails silently — trigger state may show `Enabled` but never fires. Create the ACL. |
 | Inline JSON `--body '...'` in PowerShell | "Unsupported Media Type" — always `@$tmpFile`. See [gotchas.md](gotchas.md). |
-| `ManagedServiceIdentity` with a fabricated audience | Token is minted for a meaningless audience; if the callback validates AAD tokens it returns `401 invalid audience`, otherwise MSI auth is providing no value. `audience` is **optional** — **always ask the user** whether to set one and what value to use; never default to the callback URL. See [notification-authentication.md](notification-authentication.md). |
+| `ManagedServiceIdentity` auth without an audience | `audience` is required (non-empty). Ask the user for it; if they don't provide one, default to `https://management.azure.com/`. |
+| `ManagedServiceIdentity` with callback URL as audience | The token will be meaningless (and rejected if the callback validates AAD tokens). Use a real AAD-protected resource URI — when in doubt, default to `https://management.azure.com/`. See [notification-authentication.md](notification-authentication.md). |
 | `ManagedServiceIdentity` referencing a UAMI not on the gateway | Attach it to the gateway first (see [notification-authentication.md](notification-authentication.md)). |
