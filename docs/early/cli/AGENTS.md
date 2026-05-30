@@ -83,10 +83,12 @@ User wants to …
 
 ### Sometimes
 
-- **`connector-namespace update` (namespace-level) is mostly tag-only.**
-  Only `--tags` and `--api-hub-environment-id` are honored on the
-  namespace resource. To change other namespace fields, delete +
-  recreate.
+- **`connector-namespace update` (namespace-level) is tag-only.**
+  Only `--tags` is honored on the namespace resource — the
+  `TagOnlyNamespaceUpdate` recipe hides every other body field
+  (including `--api-hub-environment-id` and the generic-update flags
+  `--set` / `--add` / `--remove`). To change any other field on the
+  namespace, delete + recreate.
 - **`mcp-connector create` arg combos are not validated client-side.**
   Validate combos yourself (see [§Authentication-mode matrix](#authentication-mode-matrix)).
 
