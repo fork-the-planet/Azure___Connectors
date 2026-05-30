@@ -46,7 +46,7 @@ irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/insta
 
 ### Version pinning
 
-By default the installer uses [`https://aka.ms/connector-namespace-whl`](https://aka.ms/connector-namespace-whl) — a stable shortlink that always points at the latest published wheel. To pin a specific version, the installer instead resolves the matching GitHub Release asset URL:
+The installer scripts default to installing the version pinned inside their own source (currently **1.0.0b9**). To install a different version explicitly:
 
 ```bash
 # Linux / macOS
@@ -62,10 +62,7 @@ curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cl
 ### Direct install (no scripts)
 
 ```bash
-# Always-latest
-az extension add --upgrade --yes --source https://aka.ms/connector-namespace-whl
-
-# Specific version
+# Direct from the GitHub Release asset
 az extension add --upgrade --yes --source \
     https://github.com/Azure/Connectors/releases/download/v1.0.0b9/connector_namespace-1.0.0b9-py3-none-any.whl
 ```

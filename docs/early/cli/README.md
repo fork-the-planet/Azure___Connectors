@@ -60,18 +60,14 @@ az connector-namespace --help
 
 ### Direct install (no scripts)
 
-If you don't want to run a remote script, install the wheel directly from the canonical short URL:
-
-```bash
-az extension add --upgrade --yes --source https://aka.ms/connector-namespace-whl
-```
-
-`https://aka.ms/connector-namespace-whl` always points at the latest published wheel. For a specific version, use the GitHub Release asset URL directly:
+If you don't want to run a remote script, install the wheel directly from the GitHub Release asset URL:
 
 ```bash
 az extension add --upgrade --yes --source \
-    https://github.com/Azure/Connectors/releases/download/v<VERSION>/connector_namespace-<VERSION>-py3-none-any.whl
+    https://github.com/Azure/Connectors/releases/download/v1.0.0b9/connector_namespace-1.0.0b9-py3-none-any.whl
 ```
+
+For other versions, swap `v1.0.0b9` / `1.0.0b9` for the version you want — every release tag publishes a matching `connector_namespace-<VERSION>-py3-none-any.whl` asset.
 
 ---
 
