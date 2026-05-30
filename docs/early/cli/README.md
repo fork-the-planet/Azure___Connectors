@@ -469,8 +469,8 @@ Every nested arg accepts both shapes. Shorthand avoids quote-escaping in bash:
 
 `connector-namespace update` and `connection update` are deliberately narrow:
 
-- **Namespace `update`** — only `--tags` and `--api-hub-environment-id` are honored. All other fields are immutable after creation; to change one, delete + recreate.
-- **Connection `update`** — only `--tags` and `--display-name` are honored.
+- **Namespace `update`** — only `--tags` is honored. All other fields are immutable after creation; to change one, delete + recreate.
+- **Connection `update`** — only `--connector-name` and `--display-name` are honored.
 
 ### Common error → fix
 
