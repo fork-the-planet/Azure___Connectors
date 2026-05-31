@@ -47,11 +47,12 @@ You provide the full `<scheme> <parameter>`.
 
 ### 4) `ManagedServiceIdentity` — namespace uses its own MI
 
-The namespace uses its managed identity to call the callback. If `audience` is
-provided, the namespace acquires an Entra token for that audience and sends it
-as `Authorization: Bearer {token}`. If `audience` is omitted, the namespace
-still calls using its MI (no AAD-protected token is minted for a specific
-resource).
+The namespace uses its managed identity to call the callback. `audience` is
+**required** (see the validation rules below): the namespace acquires an Entra
+token for that audience and sends it as `Authorization: Bearer {token}`. If
+the user doesn't supply one, default to `https://management.azure.com/` rather
+than omitting the field — an empty `audience` produces an invalid auth body
+that the namespace rejects.
 
 > ⚠️ **ASK THE USER for `audience`. If they don't provide one, default to `https://management.azure.com/`.**
 > The audience is the AAD-protected resource the namespace acquires a token for.

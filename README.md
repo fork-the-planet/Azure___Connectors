@@ -42,6 +42,7 @@ claude plugin add Azure/Connectors
 | Skill | Description |
 |-------|-------------|
 | [azure-connectorgateway](Skills/Sandbox/azure-connectorgateway/SKILL.md) | Manage connector gateways, connections, and triggers — wire external services (Office 365, Teams, Forms, SharePoint, OneDrive, GitHub, Azure Blob) to sandbox apps via event-driven triggers or direct API calls using connection runtime URLs. |
+| [azure-connectornamespace](Skills/General/azure-connectornamespace/SKILL.md) | Generic, sandbox-agnostic counterpart — manage connector namespaces, connections, trigger configs that POST to any HTTP(S) callback (Function App, Logic App, App Service, custom webhook), and MCP server configs that expose connector operations as MCP tools. |
 
 See [`Skills/Sandbox/README.md`](Skills/Sandbox/README.md) for more detail.
 

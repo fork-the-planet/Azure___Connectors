@@ -17,6 +17,15 @@
       "skills": [
         "./Skills/Sandbox/azure-connectorgateway"
       ]
+    },
+    {
+      "name": "azure-connectornamespace",
+      "source": ".",
+      "description": "Azure Connector Namespace (generic) — manage namespaces, connections, trigger configs that POST to any HTTP(S) callback (Function App, Logic App, App Service, custom webhook), and MCP server configs exposing connector operations as MCP tools. Sandbox-agnostic counterpart to azure-connectorgateway.",
+      "version": "0.1.0",
+      "skills": [
+        "./Skills/General/azure-connectornamespace"
+      ]
     }
   ]
 }

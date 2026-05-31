@@ -18,6 +18,7 @@
     "sandbox"
   ],
   "skills": [
-    "./Skills/Sandbox/azure-connectorgateway"
+    "./Skills/Sandbox/azure-connectorgateway",
+    "./Skills/General/azure-connectornamespace"
   ]
 }
