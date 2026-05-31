@@ -217,8 +217,8 @@ Ask the user:
 
 | Target | Callback URL | Notes |
 |--------|-------------|-------|
-| ShellCommand | `.../executeShellCommand` | Auto-resumes sandbox; needs RBAC `c24cf47c-...` on sandbox group |
-| ExecuteCommand | `.../executeCommand` | Same as above, no shell interpretation |
+| ShellCommand | `https://management.{region}.azuredevcompute.io/.../executeShellCommand` | Auto-resumes sandbox; needs RBAC `c24cf47c-...` on sandbox group. **Regional host required** (unregional → 404 GlobalSandboxNotFound). |
+| ExecuteCommand | `https://management.{region}.azuredevcompute.io/.../executeCommand` | Same as above, no shell interpretation. **Regional host required.** |
 | InvokePort | `https://{id}--{port}.proxy.azuredevcompute.io/...` | Sandbox must be running; needs port auth |
 
 After trigger creation → deploy handler. See [handler-guide.md](references/handler-guide.md).

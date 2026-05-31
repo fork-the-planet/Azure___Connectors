@@ -115,8 +115,9 @@ Ask for callback type:
 
 ```powershell
 # Build trigger config body — ShellCommand example
-# First construct the callback URL:
-$callbackUrl = "https://management.azuredevcompute.io/subscriptions/{sub}/resourceGroups/{rg}/sandboxGroups/{sandbox_group}/sandboxes/{sandbox_id}/executeShellCommand?api-version=2026-02-01-preview"
+# First construct the callback URL — MUST use the regional data-plane host
+# (the unregional `management.azuredevcompute.io` returns 404 GlobalSandboxNotFound):
+$callbackUrl = "https://management.{region}.azuredevcompute.io/subscriptions/{sub}/resourceGroups/{rg}/sandboxGroups/{sandbox_group}/sandboxes/{sandbox_id}/executeShellCommand?api-version=2026-02-01-preview"
 
 $triggerBody = @{
   properties = @{
