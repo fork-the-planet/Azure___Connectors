@@ -90,7 +90,7 @@ ngrok, anywhere) and you choose how the namespace authenticates to it.
 
 ### Step 1: Namespace setup
 
-> **ARM base:** `https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorNamespaces`
+> **ARM base:** `https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways`
 > **API version:** `2026-05-01-preview`
 
 Ask the user: "Do you have an existing connector namespace, or should I create a new one?"
