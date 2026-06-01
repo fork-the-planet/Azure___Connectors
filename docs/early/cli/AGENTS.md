@@ -4,7 +4,7 @@ This file tells AI assistants (Copilot, Claude, Cursor, Aider, etc.) how
 to drive the **`az connector-namespace`** Azure CLI extension efficiently. It
 follows the [AGENTS.md](https://agents.md/) convention.
 
-If you're a human, read [`README.md`](../../../connector-namespace-cli/README.md) instead — it has the
+If you're a human, read [`README.md`](../../../public-preview/connector-namespace-cli/README.md) instead — it has the
 same content in a friendlier shape.
 
 ---
@@ -196,6 +196,6 @@ error like `unrecognized value 'ActiveDirectory' from choices ['Group', 'User']`
 
 ## Where to look next
 
-- [`README.md`](../../../connector-namespace-cli/README.md) — human-facing landing (install, quickstart, deep dive)
+- [`README.md`](../../../public-preview/connector-namespace-cli/README.md) — human-facing landing (install, quickstart, deep dive)
 - [`complete-reference.md`](./complete-reference.md) — full command reference, authentication, argument shapes, tips & gotchas
 - [`examples/`](./examples/) — runnable bash scripts for end-to-end scenarios
