@@ -34,7 +34,7 @@ ngrok, anywhere) and you choose how the namespace authenticates to it.
 
 > **Naming note.** This skill was previously called "Connector Gateway". The
 > resource is now displayed as **"Connector Namespace"** everywhere (matching
-> the Cascade portal rename — see `Cascade.Portal.Client/src/components/CreateConnectorNamespacePanel.tsx`).
+> the portal rename).
 > **The ARM resource type is still `Microsoft.Web/connectorGateways`** (legacy
 > URL segment kept for backwards compatibility) and the property `gatewayConnections[]`
 > on sandbox groups also keeps its name. Do not rewrite those API strings.

@@ -4,7 +4,7 @@ Common issues for the generic connector-namespace skill and their fixes.
 
 | Issue | Solution |
 |-------|----------|
-| **"Connector" vs "Connector Namespace" — which name?** | The resource is now displayed everywhere as **"Connector Namespace"** (matching the Cascade portal rename). The underlying ARM resource type is still `Microsoft.Web/connectorGateways` (URL segment kept for backwards compatibility), and the sandbox-group property `gatewayConnections[]` also keeps its name. Use the new display name in prose; keep the legacy strings in URLs and JSON payloads. |
+| **"Connector" vs "Connector Namespace" — which name?** | The resource is now displayed everywhere as **"Connector Namespace"** (matching the portal rename). The underlying ARM resource type is still `Microsoft.Web/connectorGateways` (URL segment kept for backwards compatibility), and the sandbox-group property `gatewayConnections[]` also keeps its name. Use the new display name in prose; keep the legacy strings in URLs and JSON payloads. |
 | **Trigger not firing** (connector event) | Make sure `namespace-acl` exists on the connection (namespace MI → connection). Without it the subscription silently fails. See [trigger-setup.md](trigger-setup.md) Step 4. |
 | **Trigger state is `Enabled` but no runs** | Check `triggerConfigs/{name}/runs` for errors. Most commonly: the namespace couldn't reach `callbackUrl` (4xx/5xx from your endpoint) or authentication mismatch. |
 | **Trigger run shows `Unauthorized` from callback** | Your callback URL's auth doesn't match `notificationDetails.authentication`. Re-check the type/audience/secret. See [notification-authentication.md](notification-authentication.md). |

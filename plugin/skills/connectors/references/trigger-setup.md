@@ -162,8 +162,8 @@ parameters = @(
 > **Mental model:** treat the user's per-leaf answers as a flat
 > `Record<dottedPath, value>` map, then `setNestedValue` each entry into a
 > single accumulator object whose root is `body`. That accumulator becomes one
-> `parameters[]` entry. This mirrors Cascade's `serializeTriggerParams` exactly
-> (`src\Cascade.Portal.Client\src\components\ConnectorGateways\TriggerWizard\utils\serializeTriggerParams.ts`).
+> `parameters[]` entry. This mirrors the serialization the portal's trigger
+> wizard performs before PUT.
 
 > **Polling cadence:** if the operation has neither `x-ms-notification` nor
 > `x-ms-notification-content` in its Swagger, it polls (default ~3 min). Inform
