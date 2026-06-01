@@ -556,5 +556,5 @@ If your problem isn't covered above, file an issue at <https://github.com/Azure/
 ## See also
 
 - [README](./README.md) — overview, install, quick start, capability-by-capability walkthrough
-- [AGENTS.md](../../docs/early/cli/AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
+- [AGENTS.md](./AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
 - [`examples/`](./examples/) — 5 runnable bash scripts for end-to-end scenarios

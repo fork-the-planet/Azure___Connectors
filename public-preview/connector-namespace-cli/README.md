@@ -490,5 +490,5 @@ Full list in [`complete-reference.md` § Tips & gotchas](./complete-reference.md
 ## See also
 
 - [`complete-reference.md`](./complete-reference.md) — every command, flag, env var, and error in one place
-- [`AGENTS.md`](../../docs/early/cli/AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
+- [`AGENTS.md`](./AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
 - [`examples/`](./examples/) — 5 runnable bash scripts for end-to-end scenarios
