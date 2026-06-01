@@ -124,7 +124,7 @@ az connector-namespace connection invoke \
     --request method=GET path=/v1.0/me
 ```
 
-Full annotated flow with cleanup is in the [README Quick Start](../../../public-preview/connector-namespace-cli/README.md#quick-start).
+Full annotated flow with cleanup is in the [README Quick Start](./README.md#quick-start).
 
 [↑ Back to top](#contents)
 
@@ -555,6 +555,6 @@ If your problem isn't covered above, file an issue at <https://github.com/Azure/
 
 ## See also
 
-- [README](../../../public-preview/connector-namespace-cli/README.md) — overview, install, quick start, capability-by-capability walkthrough
-- [AGENTS.md](./AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
+- [README](./README.md) — overview, install, quick start, capability-by-capability walkthrough
+- [AGENTS.md](../../docs/early/cli/AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
 - [`examples/`](./examples/) — 5 runnable bash scripts for end-to-end scenarios
