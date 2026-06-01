@@ -28,7 +28,7 @@ Or install via the marketplace (useful when more plugins are added later):
 
 ```bash
 /plugin marketplace add Azure/Connectors
-/plugin install azure-connectorgateway@Azure-Connectors
+/plugin install azure-connectornamespace@Azure-Connectors
 ```
 
 ### Claude Code
@@ -41,9 +41,10 @@ claude plugin add Azure/Connectors
 
 | Skill | Description |
 |-------|-------------|
-| [azure-connectorgateway](Skills/Sandbox/azure-connectorgateway/SKILL.md) | Manage connector gateways, connections, and triggers — wire external services (Office 365, Teams, Forms, SharePoint, OneDrive, GitHub, Azure Blob) to sandbox apps via event-driven triggers or direct API calls using connection runtime URLs. |
+| [azure-connectornamespace](plugin/skills/connectors/SKILL.md) | Generic, callback-agnostic — manage connector namespaces, connections, trigger configs that POST to any HTTP(S) callback (Function App, Logic App, App Service, custom webhook), and MCP server configs that expose connector operations as MCP tools. |
+| [azure-connectornamespace-aca-sandbox](plugin/skills/aca-sandboxes/SKILL.md) | ACA-sandbox edition — manage connector namespaces, connections, and triggers; wire external services (Office 365, Teams, Forms, SharePoint, OneDrive, GitHub, Azure Blob) to Azure Container Apps sandbox apps via event-driven triggers or direct API calls using connection runtime URLs. |
 
-See [`Skills/Sandbox/README.md`](Skills/Sandbox/README.md) for more detail.
+See [`plugin/skills/connectors/README.md`](plugin/skills/connectors/README.md) for more detail.
 
 ## Resources
 

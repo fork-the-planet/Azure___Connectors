@@ -10,12 +10,13 @@
   },
   "plugins": [
     {
-      "name": "azure-connectorgateway",
-      "source": ".",
-      "description": "Azure Connector Gateway — manage gateways, connections, and triggers. Connects external services (Office 365, Teams, Microsoft Forms, SharePoint, OneDrive, GitHub, Azure Blob) to sandbox apps via event-driven triggers or direct API calls using connection runtime URLs.",
+      "name": "azure-connectornamespace",
+      "source": "./plugin",
+      "description": "Azure Connector Namespace — manage connector namespaces, connections, triggers, MCP server configs, and ACA sandbox wiring. Bundles a generic (callback-to-any-HTTPS-endpoint) skill plus an ACA-sandbox edition that wires triggers and direct API calls into Azure Container Apps sandboxes.",
       "version": "0.1.0",
       "skills": [
-        "./Skills/Sandbox/azure-connectorgateway"
+        "./skills/connectors",
+        "./skills/aca-sandboxes"
       ]
     }
   ]

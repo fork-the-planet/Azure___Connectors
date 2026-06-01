@@ -20,4 +20,4 @@ az rest --method GET \
   --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.Web/locations/{location}/managedApis/office365/apiOperations?api-version=2016-06-01"
 ```
 
-Or open the lab notebook: `labs/02-trigger-getting-started/01-trigger-getting-started.ipynb`
+For an end-to-end walkthrough, see [`tutorial-welcome-emailer.md`](tutorial-welcome-emailer.md).

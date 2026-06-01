@@ -107,7 +107,7 @@ az rest --method POST \
       "method": "POST",
       "path": "/datasets/default/files",
       "queries": {"folderPath": "/", "name": "hello.txt"},
-      "body": "Hello from Connector Gateway!"
+      "body": "Hello from Connector!"
     }
   }'
 ```
