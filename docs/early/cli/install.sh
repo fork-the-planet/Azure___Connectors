@@ -2,7 +2,7 @@
 # Install (or uninstall) the `az connector-namespace` Azure CLI extension.
 #
 # Usage:
-#   # Default: install the version pinned below ($DEFAULT_VERSION)
+#   # Default: install the latest published wheel (https://aka.ms/connector-namespace.whl)
 #   curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh | sh
 #
 #   # Pin a different version:
@@ -18,9 +18,7 @@ set -eu
 REPO="Azure/Connectors"
 EXT_NAME="connector-namespace"
 PKG_NAME="connector_namespace"
-
-# Single source of truth — bump this with each new release.
-DEFAULT_VERSION="1.0.0b9"
+AKAMS_URL="https://aka.ms/connector-namespace.whl"
 
 UNINSTALL=0
 for arg in "$@"; do
@@ -45,23 +43,35 @@ if [ "$UNINSTALL" -eq 1 ]; then
   exit 0
 fi
 
-# Resolve wheel URL.
+# Resolve wheel source.
 # - If CONNECTOR_NAMESPACE_VERSION is set, pin to that GitHub Release.
-# - Otherwise, use the script's DEFAULT_VERSION.
-VERSION="${CONNECTOR_NAMESPACE_VERSION:-$DEFAULT_VERSION}"
-WHEEL_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${PKG_NAME}-${VERSION}-py3-none-any.whl"
-
-if [ -n "${CONNECTOR_NAMESPACE_VERSION:-}" ]; then
+# - Otherwise, use the aka.ms link (latest published wheel).
+VERSION="${CONNECTOR_NAMESPACE_VERSION:-}"
+if [ -n "$VERSION" ]; then
+  WHEEL_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${PKG_NAME}-${VERSION}-py3-none-any.whl"
   echo "Installing '$EXT_NAME' v$VERSION (pinned via \$CONNECTOR_NAMESPACE_VERSION)"
 else
-  echo "Installing '$EXT_NAME' v$VERSION (default)"
+  WHEEL_URL="$AKAMS_URL"
+  echo "Installing '$EXT_NAME' (latest)"
 fi
 echo "  Wheel: $WHEEL_URL"
 echo ""
 
+if ! command -v curl >/dev/null 2>&1; then
+  echo "ERROR: 'curl' not found; cannot download the wheel." >&2
+  exit 1
+fi
+
+# Download the wheel to a temp file, then install from the local file.
+# (aka.ms is a redirect, so download first rather than pass the URL to az.)
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+WHEEL_FILE="$TMP_DIR/${PKG_NAME}.whl"
+curl -fsSL "$WHEEL_URL" -o "$WHEEL_FILE"
+
 # --upgrade so re-running this script updates an existing install.
 # --yes accepts the "extension is in preview" prompt automatically.
-az extension add --upgrade --yes --source "$WHEEL_URL"
+az extension add --upgrade --yes --source "$WHEEL_FILE"
 
 echo ""
 echo "✓ Installed. Try:"
