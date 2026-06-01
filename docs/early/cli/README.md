@@ -164,7 +164,7 @@ az connector-namespace create -g $RG -n $NS --location $LOC
 # Create with tags + an API Hub environment id
 az connector-namespace create -g $RG -n $NS --location $LOC \
     --tags env=prod team=ai \
-    --api-hub-environment-id <uuid>
+    --api-hub-environment-id <api-hub-environment-arm-id>
 
 # Show / list / delete
 az connector-namespace show   -g $RG -n $NS
@@ -491,4 +491,4 @@ Full list in [`complete-reference.md` § Tips & gotchas](./complete-reference.md
 
 - [`complete-reference.md`](./complete-reference.md) — every command, flag, env var, and error in one place
 - [`AGENTS.md`](./AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
-- [`examples/`](./examples/) — 6 runnable bash scripts for end-to-end scenarios
+- [`examples/`](./examples/) — 5 runnable bash scripts for end-to-end scenarios

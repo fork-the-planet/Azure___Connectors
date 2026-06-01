@@ -25,8 +25,7 @@ $AkamsUrl = 'https://aka.ms/connector-namespace.whl'
 
 # Check for Azure CLI
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
-    Write-Error "Azure CLI ('az') not found. Install it first: https://learn.microsoft.com/cli/azure/install-azure-cli"
-    exit 1
+    throw "Azure CLI ('az') not found. Install it first: https://learn.microsoft.com/cli/azure/install-azure-cli"
 }
 
 if ($Uninstall) {

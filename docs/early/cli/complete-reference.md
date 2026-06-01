@@ -46,7 +46,7 @@ irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/insta
 
 ### Version pinning
 
-The installer scripts default to installing the version pinned inside their own source (currently **1.0.0b9**). To install a different version explicitly:
+By default the installer scripts install whatever the [`https://aka.ms/connector-namespace.whl`](https://aka.ms/connector-namespace.whl) redirect currently points at (the latest published wheel). To install a different version explicitly:
 
 ```bash
 # Linux / macOS
@@ -557,4 +557,4 @@ If your problem isn't covered above, file an issue at <https://github.com/Azure/
 
 - [README](./README.md) — overview, install, quick start, capability-by-capability walkthrough
 - [AGENTS.md](./AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
-- [`examples/`](./examples/) — 6 runnable bash scripts for end-to-end scenarios
+- [`examples/`](./examples/) — 5 runnable bash scripts for end-to-end scenarios
