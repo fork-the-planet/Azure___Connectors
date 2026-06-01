@@ -210,9 +210,9 @@ Ask the user:
 1. Discover trigger operations: `GET .../managedApis/{connector}/apiOperations?api-version=2016-06-01` → filter for `properties.trigger`
 2. If trigger type is `batch` (polling): inform user it polls every ~3 minutes by default. Ask if they want a different interval.
 3. Collect parameters (resolve `x-ms-dynamic-*` via Swagger + dynamicInvoke)
-3. Ask user: sandbox (existing/new) + callback type (ShellCommand / ExecuteCommand / InvokePort)
-4. Create trigger + access policy + role assignment (**run in parallel**) — canonical template in [trigger-setup.md](references/trigger-setup.md) Step 8B
-5. Verify trigger state is `Enabled`
+4. Ask user: sandbox (existing/new) + callback type (ShellCommand / ExecuteCommand / InvokePort)
+5. Create trigger + access policy + role assignment (**run in parallel**) — canonical template in [trigger-setup.md](references/trigger-setup.md) Step 8B
+6. Verify trigger state is `Enabled`
 
 > **⚠️ Do NOT use `callbackTarget`** — that field does not exist. Correct schema: `metadata` + `notificationDetails`. See [trigger-setup.md](references/trigger-setup.md).
 

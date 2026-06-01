@@ -31,7 +31,7 @@ body:
         - Authentication / sign-in
         - Other / not sure
     validations:
-      required: true
+      required: false
 
   - type: dropdown
     id: severity
@@ -44,7 +44,7 @@ body:
         - Medium (workaround exists, but annoying)
         - Low (cosmetic, minor)
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: what-happened
