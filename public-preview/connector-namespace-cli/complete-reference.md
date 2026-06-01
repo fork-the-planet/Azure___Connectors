@@ -44,20 +44,6 @@ curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
 irm https://aka.ms/connector-namespace-cli-install-ps | iex
 ```
 
-### Version pinning
-
-By default the installer scripts install whatever the [`https://aka.ms/connector-namespace.whl`](https://aka.ms/connector-namespace.whl) redirect currently points at (the latest published wheel). To install a different version explicitly:
-
-```bash
-# Bash
-curl -fsSL https://aka.ms/connector-namespace-cli-install | CONNECTOR_NAMESPACE_VERSION=1.0.0b9 sh
-```
-
-```powershell
-# PowerShell
-& ([scriptblock]::Create((irm https://aka.ms/connector-namespace-cli-install-ps))) -Version 1.0.0b9
-```
-
 ### Direct install (no scripts)
 
 ```bash

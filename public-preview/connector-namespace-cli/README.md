@@ -20,22 +20,10 @@ Manage **`Microsoft.Web/connectorGateways`** (Connector Namespaces) and their ch
 curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
 ```
 
-Pin a specific version:
-
-```bash
-curl -fsSL https://aka.ms/connector-namespace-cli-install | CONNECTOR_NAMESPACE_VERSION=1.0.0b9 sh
-```
-
 ### PowerShell
 
 ```powershell
 irm https://aka.ms/connector-namespace-cli-install-ps | iex
-```
-
-Pin a specific version:
-
-```powershell
-& ([scriptblock]::Create((irm https://aka.ms/connector-namespace-cli-install-ps))) -Version 1.0.0b9
 ```
 
 ### Uninstall
