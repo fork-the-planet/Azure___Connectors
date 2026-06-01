@@ -5,7 +5,7 @@ Office 365 connector using **Direct API calls (Pattern A)**.
 
 ## What you'll build
 
-- A connector gateway + OAuth connection to Office 365
+- A connector + OAuth connection to Office 365
 - A sandbox running a Python script that sends a welcome email
 - Declarative **gatewayConnections** wiring (SG-level PATCH + per-sandbox PUT
   body) so the sandbox calls the runtime URL with **no auth code** — the
@@ -43,7 +43,7 @@ RG="welcome-emailer-rg"
 LOCATION="eastus"
 ```
 
-## Step 2: Create connector gateway
+## Step 2: Create connector
 
 ```powershell
 $gwBody = @{ location = $LOCATION; identity = @{ type = "SystemAssigned" } } | ConvertTo-Json -Compress

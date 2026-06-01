@@ -1,6 +1,6 @@
 # Gateway Connections — Declarative Sandbox ↔ Connection Wiring
 
-How to wire a connector-gateway connection to a sandbox group + sandbox so that
+How to wire a connector-namespace connection to a sandbox group + sandbox so that
 calls from inside the sandbox to the connection's **runtime URL** are
 authenticated automatically by the platform.
 
@@ -217,7 +217,7 @@ entries:
 2. It mints a Bearer token using the sandbox-group's SystemAssigned MI against
    the connection (this is why `sandbox-acl` must exist).
 3. It adds `Authorization: Bearer <token>` to the outbound request.
-4. The connector gateway authorizes the call (sandbox-group MI is on its ACL),
+4. The connector authorizes the call (sandbox-group MI is on its ACL),
    exchanges the token for the stored OAuth credentials, and forwards to the
    downstream API (Office 365, Teams, etc.).
 

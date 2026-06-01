@@ -10,7 +10,7 @@
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Connector Gateway (ARM: Microsoft.Web/connectorGateways)        │
+│  Connector (ARM: Microsoft.Web/connectorGateways)        │
 │  ├── Connection: OAuth-authorized access to the connector        │
 │  ├── Trigger Config: event subscription + callback delivery      │
 │  └── Access Policy: gateway MI granted access to connection      │
@@ -32,7 +32,7 @@
 
 ## End-to-End Flow
 
-### Step 1: Create Connector Gateway with SystemAssigned Identity
+### Step 1: Create Connector with SystemAssigned Identity
 
 ```bash
 az rest --method PUT \

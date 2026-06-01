@@ -1,6 +1,6 @@
 # Trigger Setup (Steps 5B–9B)
 
-Detailed commands for creating event-driven triggers on a connector gateway.
+Detailed commands for creating event-driven triggers on a connector.
 
 ## Step 5B: Discover trigger operations
 

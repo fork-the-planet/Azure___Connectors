@@ -13,7 +13,7 @@ body:
     attributes:
       label: One-line summary
       description: What broke, in a sentence.
-      placeholder: e.g. "Connector gateway list shows duplicate rows after delete"
+      placeholder: e.g. "Connector list shows duplicate rows after delete"
     validations:
       required: true
 
@@ -23,7 +23,7 @@ body:
       label: Area of the portal
       default: 6
       options:
-        - Connector gateways
+        - Connectors
         - MCP servers
         - Connections
         - Triggers

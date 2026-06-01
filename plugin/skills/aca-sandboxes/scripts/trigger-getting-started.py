@@ -9,7 +9,7 @@ End-to-end walk-through:
 
 Prerequisites:
   - Azure CLI signed in (az login)
-  - Connector gateway + connection already set up
+  - Connector + connection already set up
   - Sandbox group + sandbox already created
 
 Usage:
@@ -27,7 +27,7 @@ import uuid
 
 parser = argparse.ArgumentParser(description="Trigger Getting Started")
 parser.add_argument("-g", "--resource-group", required=True, help="Resource group")
-parser.add_argument("--gateway", required=True, help="Connector gateway name")
+parser.add_argument("--gateway", required=True, help="Connector name")
 parser.add_argument("--connector", default="office365", help="Connector type (default: office365)")
 parser.add_argument("--connection-name", default=None, help="Connection name on the gateway")
 parser.add_argument("--sandbox-id", required=True, help="Sandbox ID for trigger target")

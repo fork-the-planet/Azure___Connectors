@@ -14,7 +14,7 @@ description: |
   - Recurrence / sliding-window triggers that fire on a schedule
   - Exposing connector operations as Model Context Protocol (MCP) tools at a namespace endpoint
   - Calling connector APIs (send email, post Teams message, upload files, list items, ...)
-  Triggers: "connector namespace", "connector gateway", "create trigger", "trigger config", "webhook trigger",
+  Triggers: "connector namespace", "connector", "create trigger", "trigger config", "webhook trigger",
   "recurrence trigger", "schedule trigger", "on new email", "on new file",
   "on new item", "on form response", "callback url", "notification url",
   "mcp", "mcp server", "mcp tools", "model context protocol",
@@ -30,7 +30,7 @@ ngrok, anywhere) and you choose how the namespace authenticates to it.
 
 > If you specifically need to fan events into an Azure Container Apps sandbox group
 > (with declarative `gatewayConnections[]` wiring and sandbox callbacks), use the
-> companion skill at `Skills/Sandbox/azure-connectorgateway` instead.
+> companion skill at `plugin/skills/aca-sandboxes` instead.
 
 > **Naming note.** This skill was previously called "Connector Gateway". The
 > resource is now displayed as **"Connector Namespace"** everywhere (matching

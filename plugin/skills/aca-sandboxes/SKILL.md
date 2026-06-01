@@ -1,29 +1,30 @@
 ---
-name: azure-connectorgateway
+name: azure-connectornamespace-aca-sandbox
 description: |
-  Azure Connector Gateway — manage gateways, connections, and triggers.
-  Connects external services (Office 365, Teams, Microsoft Forms, SharePoint,
-  OneDrive, GitHub, Azure Blob) to sandbox apps via event-driven triggers or
-  direct API calls using connection runtime URLs.
+  Azure Connector Namespace — ACA sandbox edition. Manage connector namespaces,
+  connections, and triggers that wire external services (Office 365, Teams, Microsoft
+  Forms, SharePoint, OneDrive, GitHub, Azure Blob) into Azure Container Apps sandbox
+  apps via event-driven triggers or direct API calls using connection runtime URLs.
   Use when:
-  - Creating or managing connector gateways and connections
-  - Creating or managing trigger configs on a connector gateway
+  - Creating or managing connector namespaces and connections for ACA sandboxes
+  - Creating or managing trigger configs whose callbacks target sandbox endpoints
   - Subscribing to connector events (email, file, webhook, form submission, Teams message)
-  - Wiring event sources to sandbox callbacks
+  - Wiring event sources to ACA sandbox callbacks via `gatewayConnections[]`
   - Managing trigger lifecycle (enable, disable, delete)
   - Building sandbox apps that call connector APIs (send email, upload files, post Teams message, etc.)
   - Reacting to events from one service and calling another (e.g., "when a form is submitted, send a Teams message")
-  - Automating workflows across Microsoft 365 services (Forms, Teams, Outlook, SharePoint, OneDrive)
+  - Automating workflows across Microsoft 365 services (Forms, Teams, Outlook, SharePoint, OneDrive) from within an ACA sandbox
   Triggers: "create trigger", "trigger config", "webhook trigger",
-  "connector gateway", "connection", "email trigger", "send email",
+  "connector namespace", "connector", "connection", "email trigger", "send email",
   "onedrive", "sharepoint", "teams", "teams message", "post message",
-  "microsoft forms", "forms", "form response", "form submission",
+  "microsoft forms", "forms", "form response", "form submission", "aca sandbox",
+  "sandbox group", "container apps sandbox",
   "notify", "notification", "automate", "when", "on new"
 ---
 
-# Azure Connector Gateway
+# Azure Connector Namespace — ACA sandbox edition
 
-Manage connector gateways, connections, and triggers — connect external services
+Manage connectors, connections, and triggers — connect external services
 to sandbox apps via direct API calls or event-driven triggers.
 
 ## Common scenarios
@@ -116,7 +117,7 @@ Ask the user:
 > Use the subscription and resource group selected in Step 0.
 
 Ask the user:
-- "Do you have an existing connector gateway, or should I create a new one?"
+- "Do you have an existing connector, or should I create a new one?"
 - If **existing**: ask for the gateway name, then retrieve it (using sub/rg from Step 0):
   ```bash
   az rest --method GET \
