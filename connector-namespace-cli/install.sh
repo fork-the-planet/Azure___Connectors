@@ -3,14 +3,14 @@
 #
 # Usage:
 #   # Default: install the latest published wheel (https://aka.ms/connector-namespace.whl)
-#   curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.sh | sh
 #
 #   # Pin a different version:
-#   curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh \
+#   curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.sh \
 #     | CONNECTOR_NAMESPACE_VERSION=1.0.0b9 sh
 #
 #   # Uninstall:
-#   curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh \
+#   curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.sh \
 #     | sh -s -- --uninstall
 
 set -eu

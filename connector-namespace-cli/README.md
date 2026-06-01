@@ -2,7 +2,7 @@
 
 > **Preview** — The `az connector-namespace` extension is in beta preview. Command names, arguments, and behaviors may change before general availability.
 
-> Looking for a full reference of every command, flag, authentication mode, and error message? See the [**complete CLI reference**](./complete-reference.md).
+> Looking for a full reference of every command, flag, authentication mode, and error message? See the [**complete CLI reference**](../docs/early/cli/complete-reference.md).
 
 Manage **`Microsoft.Web/connectorGateways`** (Connector Namespaces) and their children from the Azure CLI — connections, MCP connectors, triggers, identities, access policies, and read-only catalog views.
 
@@ -17,38 +17,38 @@ Manage **`Microsoft.Web/connectorGateways`** (Connector Namespaces) and their ch
 ### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.sh | sh
 ```
 
 Pin a specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh \
+curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.sh \
   | CONNECTOR_NAMESPACE_VERSION=1.0.0b9 sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.ps1 | iex
+irm https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.ps1 | iex
 ```
 
 Pin a specific version:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.ps1))) -Version 1.0.0b9
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.ps1))) -Version 1.0.0b9
 ```
 
 ### Uninstall
 
 ```bash
 # Linux / macOS
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh | sh -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.sh | sh -s -- --uninstall
 ```
 
 ```powershell
 # Windows
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.ps1))) -Uninstall
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.ps1))) -Uninstall
 ```
 
 ### Verify the install
@@ -432,7 +432,7 @@ The gateway exchanges its identity's federated credential against the admin app 
 | `az connector-namespace connector` (catalog, read-only) | list · show |
 | `az connector-namespace managed-mcp-operation` (catalog) | list |
 
-Full per-command argument reference in [`complete-reference.md`](./complete-reference.md).
+Full per-command argument reference in [`complete-reference.md`](../docs/early/cli/complete-reference.md).
 
 ### Universal arguments
 
@@ -479,7 +479,7 @@ Every nested arg accepts both shapes. Shorthand avoids quote-escaping in bash:
 | `connection invoke` returns 401 | OAuth consent flow not completed | Run the 3 steps in [OAuth consent flow](#oauth-consent-flow) |
 | Agent's API key suddenly returns 401 | Time-bound key expired (silent) | Mint a fresh key — see [API keys & access keys](#api-keys--access-keys) |
 
-Full list in [`complete-reference.md` § Tips & gotchas](./complete-reference.md#tips--gotchas).
+Full list in [`complete-reference.md` § Tips & gotchas](../docs/early/cli/complete-reference.md#tips--gotchas).
 
 ### Filing an issue
 
@@ -489,6 +489,6 @@ Full list in [`complete-reference.md` § Tips & gotchas](./complete-reference.md
 
 ## See also
 
-- [`complete-reference.md`](./complete-reference.md) — every command, flag, env var, and error in one place
-- [`AGENTS.md`](./AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
-- [`examples/`](./examples/) — 5 runnable bash scripts for end-to-end scenarios
+- [`complete-reference.md`](../docs/early/cli/complete-reference.md) — every command, flag, env var, and error in one place
+- [`AGENTS.md`](../docs/early/cli/AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
+- [`examples/`](../docs/early/cli/examples/) — 5 runnable bash scripts for end-to-end scenarios

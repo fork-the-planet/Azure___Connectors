@@ -35,13 +35,13 @@ Reference documentation for the `connector-namespace` Azure CLI extension. Cover
 ### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.sh | sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.ps1 | iex
+irm https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.ps1 | iex
 ```
 
 ### Version pinning
@@ -50,13 +50,13 @@ By default the installer scripts install whatever the [`https://aka.ms/connector
 
 ```bash
 # Linux / macOS
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh \
+curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.sh \
   | CONNECTOR_NAMESPACE_VERSION=1.0.0b9 sh
 ```
 
 ```powershell
 # Windows
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.ps1))) -Version 1.0.0b9
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.ps1))) -Version 1.0.0b9
 ```
 
 ### Direct install (no scripts)
@@ -70,11 +70,11 @@ az extension add --upgrade --yes --source \
 ### Uninstall
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.sh | sh -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.sh | sh -s -- --uninstall
 ```
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/docs/early/cli/install.ps1))) -Uninstall
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/connector-namespace-cli/install.ps1))) -Uninstall
 ```
 
 ### Verify
@@ -124,7 +124,7 @@ az connector-namespace connection invoke \
     --request method=GET path=/v1.0/me
 ```
 
-Full annotated flow with cleanup is in the [README Quick Start](./README.md#quick-start).
+Full annotated flow with cleanup is in the [README Quick Start](../../../connector-namespace-cli/README.md#quick-start).
 
 [↑ Back to top](#contents)
 
@@ -555,6 +555,6 @@ If your problem isn't covered above, file an issue at <https://github.com/Azure/
 
 ## See also
 
-- [README](./README.md) — overview, install, quick start, capability-by-capability walkthrough
+- [README](../../../connector-namespace-cli/README.md) — overview, install, quick start, capability-by-capability walkthrough
 - [AGENTS.md](./AGENTS.md) — AI-agent integration guide (decision tree, refusal rules, asymmetry traps)
 - [`examples/`](./examples/) — 5 runnable bash scripts for end-to-end scenarios
