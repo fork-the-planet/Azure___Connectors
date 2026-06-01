@@ -348,7 +348,7 @@ az connector-namespace trigger delete -g $RG --namespace $NS -n onNewEmail
 # Observe executions
 az connector-namespace trigger run    list -g $RG --namespace $NS --trigger-config-name onNewEmail
 az connector-namespace trigger run    show -g $RG --namespace $NS --trigger-config-name onNewEmail -n <run-id>
-az connector-namespace trigger status show -g $RG --namespace $NS --trigger-config-name onNewEmail -n primary
+az connector-namespace trigger status show -g $RG --namespace $NS --trigger-config-name onNewEmail
 ```
 
 ### API keys & access keys

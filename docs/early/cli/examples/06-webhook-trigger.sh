@@ -22,4 +22,4 @@ echo
 echo ">>> Trigger $TRIGGER created."
 echo ">>> Inspect runs:"
 echo ">>>   az connector-namespace trigger run    list -g $RG --namespace $NS --trigger-config-name $TRIGGER -o table"
-echo ">>>   az connector-namespace trigger status show -g $RG --namespace $NS --trigger-config-name $TRIGGER -n primary"
+echo ">>>   az connector-namespace trigger status show -g $RG --namespace $NS --trigger-config-name $TRIGGER"
