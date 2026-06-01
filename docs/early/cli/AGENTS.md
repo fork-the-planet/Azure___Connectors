@@ -90,7 +90,7 @@ User wants to …
   `--set` / `--add` / `--remove`). To change any other field on the
   namespace, delete + recreate.
 - **`mcp-connector create` arg combos are not validated client-side.**
-  Validate combos yourself (see [§Authentication-mode matrix](#authentication-mode-matrix)).
+  Validate combos yourself (see [§Authentication-mode matrix](#authentication-mode-matrix-for-mcp-connector-create)).
 
 ---
 
