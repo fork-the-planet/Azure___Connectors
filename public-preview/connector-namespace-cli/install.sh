@@ -62,12 +62,29 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 1
 fi
 
-# Download the wheel to a temp file, then install from the local file.
+# Download the wheel to a temp dir, then install from the local file.
 # (aka.ms is a redirect, so download first rather than pass the URL to az.)
+# The file name must keep the real wheel name (e.g. connector_namespace-1.0.0b9-py3-none-any.whl)
+# because 'az extension add' parses the extension name/version from it.
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
-WHEEL_FILE="$TMP_DIR/${PKG_NAME}.whl"
-curl -fsSL "$WHEEL_URL" -o "$WHEEL_FILE"
+HEADERS_FILE="$TMP_DIR/headers.txt"
+DOWNLOAD_FILE="$TMP_DIR/download.bin"
+curl -fsSL -D "$HEADERS_FILE" "$WHEEL_URL" -o "$DOWNLOAD_FILE"
+
+# Prefer the server-provided file name (Content-Disposition); the resolved
+# redirect URL is an opaque blob id, so it can't be parsed for the name.
+# tail picks the final redirect hop; cut/tr strip the prefix and any quotes.
+WHEEL_NAME="$(grep -io 'filename=[^;[:space:]]*' "$HEADERS_FILE" | tail -n1 | cut -d= -f2- | tr -d '"'\''\r')"
+if [ -z "$WHEEL_NAME" ]; then
+  if [ -n "$VERSION" ]; then
+    WHEEL_NAME="${PKG_NAME}-${VERSION}-py3-none-any.whl"
+  else
+    WHEEL_NAME="${PKG_NAME}.whl"
+  fi
+fi
+WHEEL_FILE="$TMP_DIR/$WHEEL_NAME"
+mv "$DOWNLOAD_FILE" "$WHEEL_FILE"
 
 # --upgrade so re-running this script updates an existing install.
 # --yes accepts the "extension is in preview" prompt automatically.

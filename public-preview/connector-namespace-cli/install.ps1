@@ -59,17 +59,37 @@ if ($Version) {
 Write-Host "  Wheel: $wheelUrl"
 Write-Host ""
 
-# Download the wheel to a temp file, then install from the local file.
+# Download the wheel to a temp dir, then install from the local file.
 # (aka.ms is a redirect, so download first rather than pass the URL to az.)
-$wheelFile = Join-Path ([System.IO.Path]::GetTempPath()) "$PkgName.whl"
+# The file name must keep the real wheel name (e.g. connector_namespace-1.0.0b9-py3-none-any.whl)
+# because 'az extension add' parses the extension name/version from it.
+$tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("connector-namespace-" + [System.Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $tmpDir | Out-Null
 try {
-    Invoke-WebRequest -Uri $wheelUrl -OutFile $wheelFile -UseBasicParsing
+    $downloadPath = Join-Path $tmpDir 'download.bin'
+    $resp = Invoke-WebRequest -Uri $wheelUrl -OutFile $downloadPath -UseBasicParsing -PassThru
+
+    # Prefer the server-provided file name (Content-Disposition); the resolved
+    # redirect URL is an opaque blob id, so it can't be parsed for the name.
+    $wheelName = $null
+    $cd = $resp.Headers['Content-Disposition']
+    if ($cd) {
+        if ($cd -is [array]) { $cd = $cd[0] }
+        if ($cd -match 'filename\*?=(?:UTF-8'''')?"?([^";]+)"?') { $wheelName = $matches[1].Trim() }
+    }
+    if (-not $wheelName) {
+        if ($Version) { $wheelName = "${PkgName}-${Version}-py3-none-any.whl" } else { $wheelName = "${PkgName}.whl" }
+    }
+
+    $wheelFile = Join-Path $tmpDir $wheelName
+    Move-Item -Path $downloadPath -Destination $wheelFile -Force
 
     # --upgrade so re-running this script updates an existing install.
     # --yes accepts the "extension is in preview" prompt automatically.
     az extension add --upgrade --yes --source $wheelFile
+    if ($LASTEXITCODE -ne 0) { throw "az extension add failed (exit code $LASTEXITCODE)." }
 } finally {
-    Remove-Item -Path $wheelFile -ErrorAction SilentlyContinue
+    Remove-Item -Path $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host ""
