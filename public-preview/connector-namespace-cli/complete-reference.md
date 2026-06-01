@@ -32,31 +32,16 @@ Reference documentation for the `connector-namespace` Azure CLI extension. Cover
 
 ## Installation
 
-### Linux / macOS
+### Bash
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.sh | sh
+curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
 ```
 
-### Windows (PowerShell)
+### PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.ps1 | iex
-```
-
-### Version pinning
-
-By default the installer scripts install whatever the [`https://aka.ms/connector-namespace.whl`](https://aka.ms/connector-namespace.whl) redirect currently points at (the latest published wheel). To install a different version explicitly:
-
-```bash
-# Linux / macOS
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.sh \
-  | CONNECTOR_NAMESPACE_VERSION=1.0.0b9 sh
-```
-
-```powershell
-# Windows
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.ps1))) -Version 1.0.0b9
+irm https://aka.ms/connector-namespace-cli-install-ps | iex
 ```
 
 ### Direct install (no scripts)
@@ -70,11 +55,11 @@ az extension add --upgrade --yes --source \
 ### Uninstall
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.sh | sh -s -- --uninstall
+curl -fsSL https://aka.ms/connector-namespace-cli-install | sh -s -- --uninstall
 ```
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.ps1))) -Uninstall
+& ([scriptblock]::Create((irm https://aka.ms/connector-namespace-cli-install-ps))) -Uninstall
 ```
 
 ### Verify

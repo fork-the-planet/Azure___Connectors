@@ -2,13 +2,13 @@
 #
 # Usage:
 #   # Default: install the latest published wheel (https://aka.ms/connector-namespace.whl)
-#   irm https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.ps1 | iex
+#   irm https://aka.ms/connector-namespace-cli-install-ps | iex
 #
 #   # Pin a different version:
-#   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.ps1))) -Version 1.0.0b9
+#   & ([scriptblock]::Create((irm https://aka.ms/connector-namespace-cli-install-ps))) -Version 1.0.0b9
 #
 #   # Uninstall:
-#   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.ps1))) -Uninstall
+#   & ([scriptblock]::Create((irm https://aka.ms/connector-namespace-cli-install-ps))) -Uninstall
 
 [CmdletBinding()]
 param(

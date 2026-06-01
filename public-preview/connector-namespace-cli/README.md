@@ -14,41 +14,28 @@ Manage **`Microsoft.Web/connectorGateways`** (Connector Namespaces) and their ch
 
 ## Installation
 
-### Linux / macOS
+### Bash
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.sh | sh
+curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
 ```
 
-Pin a specific version:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.sh \
-  | CONNECTOR_NAMESPACE_VERSION=1.0.0b9 sh
-```
-
-### Windows (PowerShell)
+### PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.ps1 | iex
-```
-
-Pin a specific version:
-
-```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.ps1))) -Version 1.0.0b9
+irm https://aka.ms/connector-namespace-cli-install-ps | iex
 ```
 
 ### Uninstall
 
 ```bash
-# Linux / macOS
-curl -fsSL https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.sh | sh -s -- --uninstall
+# Bash
+curl -fsSL https://aka.ms/connector-namespace-cli-install | sh -s -- --uninstall
 ```
 
 ```powershell
-# Windows
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Azure/Connectors/main/public-preview/connector-namespace-cli/install.ps1))) -Uninstall
+# PowerShell
+& ([scriptblock]::Create((irm https://aka.ms/connector-namespace-cli-install-ps))) -Uninstall
 ```
 
 ### Verify the install
