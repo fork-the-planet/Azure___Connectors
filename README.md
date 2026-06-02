@@ -18,13 +18,7 @@ your coding agent.
 
 ### GitHub Copilot CLI
 
-Quickest install — install directly from this repo:
-
-```bash
-/plugin install Azure/Connectors
-```
-
-Or install via the marketplace (useful when more plugins are added later):
+Requires GitHub Copilot CLI **1.0.58 or later** (run `copilot update` if needed):
 
 ```bash
 /plugin marketplace add Azure/Connectors
