@@ -2,24 +2,19 @@
 name: azure-connectornamespace-aca-sandbox
 description: |
   Azure Connector Namespace — ACA sandbox edition. Manage connector namespaces,
-  connections, and triggers that wire external services (Office 365, Teams, Microsoft
-  Forms, SharePoint, OneDrive, GitHub, Azure Blob) into Azure Container Apps sandbox
-  apps via event-driven triggers or direct API calls using connection runtime URLs.
+  connections, and triggers that wire external services (Office 365, Teams, Forms,
+  SharePoint, OneDrive, GitHub, Azure Blob) into ACA sandbox apps via event-driven
+  triggers or direct API calls using connection runtime URLs.
   Use when:
-  - Creating or managing connector namespaces and connections for ACA sandboxes
-  - Creating or managing trigger configs whose callbacks target sandbox endpoints
-  - Subscribing to connector events (email, file, webhook, form submission, Teams message)
-  - Wiring event sources to ACA sandbox callbacks via `gatewayConnections[]`
-  - Managing trigger lifecycle (enable, disable, delete)
-  - Building sandbox apps that call connector APIs (send email, upload files, post Teams message, etc.)
-  - Reacting to events from one service and calling another (e.g., "when a form is submitted, send a Teams message")
-  - Automating workflows across Microsoft 365 services (Forms, Teams, Outlook, SharePoint, OneDrive) from within an ACA sandbox
-  Triggers: "create trigger", "trigger config", "webhook trigger",
-  "connector namespace", "connector", "connection", "email trigger", "send email",
-  "onedrive", "sharepoint", "teams", "teams message", "post message",
-  "microsoft forms", "forms", "form response", "form submission", "aca sandbox",
-  "sandbox group", "container apps sandbox",
-  "notify", "notification", "automate", "when", "on new"
+  - Managing connector namespaces and connections for ACA sandboxes
+  - Creating trigger configs whose callbacks target sandbox endpoints
+  - Wiring event sources to ACA sandbox callbacks via gatewayConnections
+  - Building sandbox apps that call connector APIs (send email, post Teams message, etc.)
+  - Reacting to events from one service and calling another
+  Triggers: "create trigger", "trigger config", "webhook trigger", "connector namespace",
+  "connector", "connection", "email trigger", "send email", "onedrive", "sharepoint",
+  "teams", "teams message", "microsoft forms", "form response", "aca sandbox",
+  "sandbox group", "container apps sandbox", "notify", "automate", "when", "on new"
 ---
 
 # Azure Connector Namespace — ACA sandbox edition
@@ -53,6 +48,9 @@ to sandbox apps via direct API calls or event-driven triggers.
 | **SSL/stderr** | `REQUESTS_CA_BUNDLE` preferred. `verify=False` needs `disable_warnings()`. stderr = trigger failure. See [handler-guide.md](references/handler-guide.md). |
 | **Parallel execution** | Run independent ops (connections, ACLs, gatewayConnections wiring, dynamic values) as parallel tool calls. |
 | **Sandbox ↔ connection wiring** | Use the declarative **gatewayConnections** pattern (SG-level PATCH + per-sandbox PUT body). See [gateway-connections.md](references/gateway-connections.md). |
+| **Swagger / operation discovery** | Always fetch the connector Swagger via the connection's runtime metadata URL — see [swagger-discovery.md](references/swagger-discovery.md) for the full pattern (auth, ACL idempotency, parsing, picking the right operation). |
+| **ACL idempotency** | When creating a **user-ACL** on a connection (for swagger discovery from outside a sandbox), ALWAYS GET the policy first and only PUT if it doesn't exist. Never blindly recreate a user-ACL. (This does not apply to `gateway-acl` / `sandbox-acl` — those are typically PUT directly during setup.) |
+| **Narrate progress** | The user must know what's happening at each step **before** you run the shell. Print a short chat message (NOT inside the shell block) with: (a) what you're doing in one line, (b) the exact URL or resource ID being touched, and (c) why. Never run a shell command silently or with only a collapsed shell block. |
 
 **When to STOP and ask the user:** Any parameter with dynamic values (teams, channels, folders, sites, lists), choosing integration pattern, OAuth consent. **You must NEVER skip this — always fetch the list and present it.**
 
@@ -191,9 +189,9 @@ Ask the user:
 
 ### Step 5A: Direct API calls via dynamicInvoke
 
-→ **Full details:** [direct-api.md](references/direct-api.md) | **Dynamic values:** [dynamic-values.md](references/dynamic-values.md)
+→ **Full details:** [direct-api.md](references/direct-api.md) | **Swagger discovery:** [swagger-discovery.md](references/swagger-discovery.md) | **Dynamic values:** [dynamic-values.md](references/dynamic-values.md)
 
-1. Get the connector Swagger (`managedApis/{connector}?export=true`) → extract operationId-to-path table
+1. Fetch the connector Swagger and pick an operation — see [swagger-discovery.md](references/swagger-discovery.md).
 2. Call `dynamicInvoke` on the connection with the resolved `method` + `path`
 3. If parameters have `x-ms-dynamic-*` → resolve via dynamicInvoke, show display names to user, store values
 
@@ -205,9 +203,9 @@ Ask the user:
 
 ### Step 5B: Event-driven triggers
 
-→ **Full trigger setup (Steps 5B–9B):** [trigger-setup.md](references/trigger-setup.md) | **Dynamic values:** [dynamic-values.md](references/dynamic-values.md)
+→ **Full trigger setup (Steps 5B–9B):** [trigger-setup.md](references/trigger-setup.md) | **Swagger discovery:** [swagger-discovery.md](references/swagger-discovery.md) | **Dynamic values:** [dynamic-values.md](references/dynamic-values.md)
 
-1. Discover trigger operations: `GET .../managedApis/{connector}/apiOperations?api-version=2016-06-01` → filter for `properties.trigger`
+1. Discover trigger operations — fetch the Swagger and filter paths whose operation has `x-ms-trigger` set. See [swagger-discovery.md](references/swagger-discovery.md).
 2. If trigger type is `batch` (polling): inform user it polls every ~3 minutes by default. Ask if they want a different interval.
 3. Collect parameters (resolve `x-ms-dynamic-*` via Swagger + dynamicInvoke)
 4. Ask user: sandbox (existing/new) + callback type (ShellCommand / ExecuteCommand / InvokePort)
@@ -256,11 +254,9 @@ az rest --method GET --url ".../connectorGateways/{gw}?api-version=2026-05-01-pr
 # Connections
 az rest --method GET --url ".../connectorGateways/{gw}/connections?api-version=2026-05-01-preview"
 
-# List operations (summaries + trigger types)
-az rest --method GET --url ".../providers/Microsoft.Web/locations/{location}/managedApis/{connector}/apiOperations?api-version=2016-06-01"
-
-# Get Swagger (full paths, parameters, x-ms-dynamic-* extensions)
-az rest --method GET --url ".../providers/Microsoft.Web/locations/{location}/managedApis/{connector}" --url-parameters "api-version=2016-06-01" "export=true"
+# Connector Swagger (paths, parameters, x-ms-dynamic-* extensions) — use to list operations or pick a specific one.
+# See references/swagger-discovery.md for the full fetch pattern (metadata URL + user-ACL + API Hub token):
+#   az rest --method GET --url "<metadata_url>?export=true" --resource "https://apihub.azure.com"
 
 # Dynamic invoke
 az rest --method POST --url ".../connectorGateways/{gw}/connections/{conn}/dynamicInvoke?api-version=2026-05-01-preview" --body '{"request":{"method":"GET","path":"/..."}}'

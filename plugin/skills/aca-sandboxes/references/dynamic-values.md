@@ -4,31 +4,9 @@ How to resolve connector parameters that require dynamic API calls.
 
 ## Step 1: Get the connector's Swagger (REQUIRED FIRST)
 
-Before resolving any dynamic value, fetch the connector's **full Swagger definition**.
-This gives you operationId → HTTP method + path mappings for all operations.
+Before resolving any dynamic value, fetch the connector's **full Swagger definition** via the connection's runtime metadata URL. This gives you operationId → HTTP method + path mappings for all operations.
 
-```powershell
-# Fetch the full Swagger — MUST save to file first (ConvertFrom-Json fails on piped output)
-az rest --method GET `
-  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.Web/locations/{location}/managedApis/{connector}" `
-  --url-parameters "api-version=2016-06-01" "export=true" -o json > $env:TEMP\swagger.json
-
-# Parse the swagger and extract operationId → path table
-python -c "
-import json
-with open(r'$env:TEMP\swagger.json') as f:
-    data = json.load(f)
-paths = data.get('properties',{}).get('apiDefinitions',{}).get('value',{}).get('paths',{})
-for path, methods in paths.items():
-    for method, details in methods.items():
-        if isinstance(details, dict) and 'operationId' in details:
-            clean_path = path.replace('/{connectionId}', '')
-            print(f'{details[\"operationId\"]:40s} {method.upper():6s} {clean_path}')
-"
-```
-
-> **⚠️ PowerShell parsing issue:** `az rest` with `export=true` returns raw swagger that
-> breaks `ConvertFrom-Json` when piped. Always save to file with `-o json > file.json` first.
+→ See [swagger-discovery.md](swagger-discovery.md) for the full fetch pattern (user-ACL idempotency + API Hub token + parsing).
 
 **To find the path for an operationId** (e.g., `GetFolders`):
 - Look through `paths` → each path key (e.g., `/{connectionId}/datasets/default/folders`) has method entries (get, post, etc.)

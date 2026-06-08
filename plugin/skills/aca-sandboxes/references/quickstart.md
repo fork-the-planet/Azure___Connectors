@@ -15,9 +15,7 @@ az rest --method GET \
   --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/connectorGateways/{gw}/triggerConfigs?api-version=2026-05-01-preview" \
   --query "value[].{name:name, state:properties.state, connector:properties.connectionDetails.connectorName}" -o table
 
-# 4. Discover operations for a connector (classic locations endpoint)
-az rest --method GET \
-  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.Web/locations/{location}/managedApis/office365/apiOperations?api-version=2016-06-01"
+# 4. Discover operations for a connector — see references/swagger-discovery.md.
 ```
 
 For an end-to-end walkthrough, see [`tutorial-welcome-emailer.md`](tutorial-welcome-emailer.md).

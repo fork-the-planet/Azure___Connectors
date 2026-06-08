@@ -102,12 +102,7 @@ az rest --method PUT `
 
 ### Step 6: Discover Trigger Operations (optional)
 
-```bash
-# Discover operations for the connector
-az rest --method GET \
-  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.Web/locations/{location}/managedApis/office365/apiOperations?api-version=2016-06-01"
-# Filter: trigger operations have non-empty "properties.trigger" field
-```
+Fetch the connector's Swagger and filter operations with `x-ms-trigger` set. See [swagger-discovery.md](swagger-discovery.md) for the full pattern.
 
 ### Step 7: Manage Trigger Lifecycle
 
@@ -179,5 +174,5 @@ objectIds to authenticate. The proxy URL uses `audience: https://auth.adcproxy.i
 | Handler runtime-URL calls 401/403 | Ensure (a) sandbox-group has SystemAssigned MI, (b) `sandbox-acl` exists on the connection, (c) sandbox-group `properties.gatewayConnections[]` references this connection, (d) the sandbox was created with `gatewayConnections: [{resourceId}]` in its data-plane PUT body. See [gateway-connections.md](gateway-connections.md) |
 | Sandbox not responding | Ensure sandbox is Running; for ShellCommand, use `activationMode: OnDemand` |
 | Port auth failure | Add gateway principalId to port's `auth.entraId.objectIds` on the sandbox |
-| Parameters rejected | Get exact parameter names from the connector Swagger (`managedApis/{connector}?export=true`) |
+| Parameters rejected | Get exact parameter names from the connector Swagger — see [swagger-discovery.md](swagger-discovery.md) |
 | Cleanup order | Delete trigger config → access policies → connection → sandbox → gateway. Always delete triggers first. |

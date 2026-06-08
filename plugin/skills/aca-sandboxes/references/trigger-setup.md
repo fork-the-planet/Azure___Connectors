@@ -4,12 +4,8 @@ Detailed commands for creating event-driven triggers on a connector.
 
 ## Step 5B: Discover trigger operations
 
-```bash
-# Discover operations for the connector
-az rest --method GET \
-  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.Web/locations/{location}/managedApis/office365/apiOperations?api-version=2016-06-01"
-# Filter: trigger operations have non-empty "properties.trigger" field
-```
+Fetch the connector's Swagger and filter operations that have `x-ms-trigger` set. See [swagger-discovery.md](swagger-discovery.md) for the full fetch pattern (user-ACL idempotency + API Hub token + parsing).
+
 Present operations as choices (summary + operationId). Let user pick.
 
 > **⚠️ Identifying recurrence/polling triggers:** Check the Swagger definition for the selected operation.
