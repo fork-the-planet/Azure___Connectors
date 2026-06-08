@@ -7,39 +7,7 @@ Gateway injects stored OAuth credentials. **Use `request` format (NOT `parameter
 
 ## 1. Get the Swagger and select the operation
 
-```powershell
-# Get connector Swagger — save to file (ConvertFrom-Json fails on piped output)
-az rest --method GET `
-  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.Web/locations/{location}/managedApis/{connector}" `
-  --url-parameters "api-version=2016-06-01" "export=true" -o json > $env:TEMP\swagger.json
-
-# Extract operationId → path table
-python -c "
-import json
-with open(r'$env:TEMP\swagger.json') as f:
-    data = json.load(f)
-paths = data.get('properties',{}).get('apiDefinitions',{}).get('value',{}).get('paths',{})
-for path, methods in paths.items():
-    for method, details in methods.items():
-        if isinstance(details, dict) and 'operationId' in details:
-            clean_path = path.replace('/{connectionId}', '')
-            print(f'{details[\"operationId\"]:40s} {method.upper():6s} {clean_path}')
-"
-```
-
-To list available operations (for presenting choices or matching user intent):
-```powershell
-# Quick list of operations with summaries (lighter than full swagger)
-az rest --method GET `
-  --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.Web/locations/{location}/managedApis/{connector}/apiOperations?api-version=2016-06-01" `
-  --query "value[].{name:name, summary:properties.summary, trigger:properties.trigger}" -o table
-```
-
-Match user's intent to the best operation. If ambiguous, ask with specific choices.
-Do NOT dump all operations for the user — choose the right one yourself.
-
-**To find the HTTP path for a chosen operationId:** Search the Swagger `paths` for the matching
-`operationId`. Strip the `/{connectionId}` prefix — that's the path you pass to `dynamicInvoke`.
+See [swagger-discovery.md](swagger-discovery.md) for the full pattern — auth (user-ACL idempotency + API Hub token), metadata URL derivation, Swagger parsing, and the keyword-matching algorithm for picking the right operation.
 
 ## 2. Collect parameter values interactively
 

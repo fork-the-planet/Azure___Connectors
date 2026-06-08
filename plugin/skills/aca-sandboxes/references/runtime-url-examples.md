@@ -13,7 +13,7 @@ Content-Type: application/json
 
 ## How to map Swagger operations to runtime URL calls
 
-1. **Find the operation** from the connector's Swagger (use `GET .../locations/{location}/managedApis/{connector}/apiOperations?api-version=2016-06-01`)
+1. **Find the operation** from the connector's Swagger — see [swagger-discovery.md](swagger-discovery.md).
 
 2. **Build the URL**:
    - Base: `connectionRuntimeUrl` (from connection properties)

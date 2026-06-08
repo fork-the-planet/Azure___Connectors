@@ -58,9 +58,17 @@ print(f"Connector:        {connector}")
 print(f"Connection:       {connection_name}")
 
 
-def az_rest(method, url, body=None):
-    """Call az rest and return parsed JSON. Exits with helpful message on failure."""
+def az_rest(method, url, body=None, resource=None, ignore_errors=False):
+    """Call az rest and return parsed JSON.
+
+    Prints an error message on failure and re-raises `CalledProcessError` so
+    callers can decide whether to handle or propagate it. Pass
+    `ignore_errors=True` to suppress the print + raise and return None instead
+    (useful for existence checks like 'ACL exists?').
+    """
     cmd = ["az", "rest", "--method", method, "--url", url]
+    if resource:
+        cmd += ["--resource", resource]
     if body:
         # Use temp file to avoid PowerShell/shell quoting issues
         tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
@@ -71,6 +79,8 @@ def az_rest(method, url, body=None):
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return json.loads(result.stdout) if result.stdout.strip() else {}
     except subprocess.CalledProcessError as e:
+        if ignore_errors:
+            return None
         error_msg = e.stderr[:300] if e.stderr else "unknown error"
         print(f"  ❌ az rest {method} failed: {error_msg}")
         raise
@@ -79,46 +89,105 @@ def az_rest(method, url, body=None):
             os.unlink(tmp.name)
 
 
+def ensure_user_acl(conn_arm_base, conn_location):
+    """Idempotently ensure the signed-in user has an ACL on the connection.
+    Required to call the metadata URL with the API Hub audience.
+    """
+    user_oid = subprocess.run(
+        ["az", "ad", "signed-in-user", "show", "--query", "id", "-o", "tsv"],
+        capture_output=True, text=True, check=True).stdout.strip()
+    tenant_id = subprocess.run(
+        ["az", "account", "show", "--query", "tenantId", "-o", "tsv"],
+        capture_output=True, text=True, check=True).stdout.strip()
+    acl_url = f"{conn_arm_base}/accessPolicies/{user_oid}?{API_VERSION}"
+    # GET first — only create if missing
+    if az_rest("GET", acl_url, ignore_errors=True) is None:
+        print(f"  Creating user-ACL on connection for objectId {user_oid}...")
+        az_rest("PUT", acl_url, body={
+            "location": conn_location,
+            "properties": {
+                "principal": {
+                    "type": "ActiveDirectory",
+                    "identity": {"objectId": user_oid, "tenantId": tenant_id},
+                }
+            },
+        })
+    else:
+        print(f"  User-ACL already exists for objectId {user_oid}.")
+
+
 # =========================================================================
-# Step 1: Discover Trigger Operations
+# Step 1: Discover Trigger Operations (via connector Swagger from metadata URL)
 # =========================================================================
 print("\n" + "=" * 60)
 print(f"Step 1: Discover Trigger Operations for {connector}")
 print("=" * 60)
 
-# Use the classic locations API to discover operations
-# First get gateway location
+# Get the gateway info — used later for ACL location + gateway MI identity
 gw_info = az_rest("GET", f"{ARM_BASE}?{API_VERSION}")
 location = gw_info.get("location", "westcentralus")
 
-ops_url = f"https://management.azure.com/subscriptions/{subscription_id}/providers/Microsoft.Web/locations/{location}/managedApis/{connector}/apiOperations?api-version=2016-06-01"
-operations = az_rest("GET", ops_url)
+# Get the connection's runtime URL (requires connection to exist)
+conn_info = az_rest("GET", f"{ARM_BASE}/connections/{connection_name}?{API_VERSION}")
+runtime_url = conn_info.get("properties", {}).get("connectionRuntimeUrl")
+if not runtime_url:
+    print("  ❌ Connection has no connectionRuntimeUrl yet. Complete OAuth consent first.")
+    sys.exit(1)
+conn_location = conn_info.get("location", location)
 
-raw_ops = operations.get("value", []) if isinstance(operations, dict) else operations
-trigger_ops = [op for op in raw_ops if op.get("properties", {}).get("trigger")]
+# Ensure the signed-in user has an ACL on the connection (idempotent — GET first, PUT only if missing).
+# The metadata URL requires connection-level auth.
+ensure_user_acl(f"{ARM_BASE}/connections/{connection_name}", conn_location)
+
+# Derive the metadata URL: replace /apim/ with /metadata/
+metadata_url = runtime_url.replace("/apim/", "/metadata/") + "?export=true"
+
+# Call metadata URL with the API Hub audience
+swagger = az_rest("GET", metadata_url, resource="https://apihub.azure.com")
+
+# Filter paths for operations with x-ms-trigger
+trigger_ops = []
+for path, methods in swagger.get("paths", {}).items():
+    for method, details in methods.items():
+        if not isinstance(details, dict):
+            continue
+        trigger = details.get("x-ms-trigger")
+        if not trigger:
+            continue
+        op_id = details.get("operationId")
+        if not op_id:
+            # Skip operations without an operationId — can't address them downstream
+            continue
+        # x-ms-trigger is typically an object like {"type": "polling"} or a string
+        trigger_type_str = trigger.get("type") if isinstance(trigger, dict) else str(trigger)
+        trigger_ops.append({
+            "name": op_id,
+            "path": path,
+            "method": method.upper(),
+            "summary": details.get("summary", ""),
+            "trigger": trigger_type_str or "unknown",
+        })
 
 if not trigger_ops:
     print("  ❌ No trigger operations found for this connector.")
-    print(f"     Verify connector name '{connector}' is correct and available in location '{location}'.")
+    print(f"     Verify connector name '{connector}' is correct.")
     sys.exit(1)
 
 print(f"  {len(trigger_ops)} trigger operations available:")
 for i, op in enumerate(trigger_ops, 1):
-    props = op.get("properties", {})
-    trigger_type = props.get("trigger", "")
-    print(f"    {i}. {op['name']}: {props.get('summary', '')} [{trigger_type}]")
+    print(f"    {i}. {op['name']}: {op['summary']} [{op['trigger']}]")
 
 # Auto-select first trigger for demo purposes (interactive scripts should prompt user)
 selected_op = trigger_ops[0]
-selected_name = selected_op.get("name", selected_op.get("operationId"))
-trigger_type = selected_op.get("properties", {}).get("trigger", "")
+selected_name = selected_op["name"]
+trigger_type = selected_op["trigger"]
 print(f"\n  Selected: {selected_name}")
 
 # Polling/recurrence trigger detection:
-# If the trigger operation does NOT have x-ms-notification AND does NOT have
-# x-ms-notification-content in its Swagger definition, it is a recurrence trigger.
-# Only in that case, inform the user about the default polling interval.
-if trigger_type in ("batch", "Batch", "single", "Single"):
+# Metadata Swagger commonly yields x-ms-trigger.type values like "polling" or "webhook"
+# (or "batch"/"single" in older swaggers). Polling triggers fire on a schedule and
+# accept a recurrence parameter; inform the user about the default interval.
+if trigger_type.lower() in ("polling", "batch", "single"):
     # NOTE: To determine if this is a recurrence trigger, check the Swagger for
     # the operation. If it lacks both x-ms-notification and x-ms-notification-content,
     # it's a recurrence/polling trigger regardless of single/batch.

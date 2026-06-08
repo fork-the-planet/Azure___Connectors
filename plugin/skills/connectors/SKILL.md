@@ -3,22 +3,20 @@ name: azure-connectornamespace
 description: |
   Azure Connector Namespace — manage namespaces, connections, triggers, and MCP server configs.
   Connect external SaaS services (Office 365, Teams, SharePoint, OneDrive, Forms, GitHub,
-  Azure Blob, ...) to any user-provided webhook URL via event-driven triggers, expose
+  Azure Blob) to any user-provided webhook URL via event-driven triggers, expose
   selected connector operations as an MCP server endpoint, or call connector operations
-  on demand via `dynamicInvoke`.
+  on demand via dynamicInvoke.
   Use when:
-  - Creating or managing connector namespaces and connections
-  - Creating or managing trigger configs that POST to an arbitrary callback URL
-  - Subscribing to connector events (email, file, list-item, form response, Teams message)
-  - Wiring event sources to a customer-owned webhook, Function App, Logic App, or API
+  - Managing connector namespaces and connections
+  - Creating trigger configs that POST to a callback URL
+  - Subscribing to connector events (email, file, list-item, form response)
+  - Wiring event sources to a webhook, Function App, Logic App, or API
   - Recurrence / sliding-window triggers that fire on a schedule
-  - Exposing connector operations as Model Context Protocol (MCP) tools at a namespace endpoint
-  - Calling connector APIs (send email, post Teams message, upload files, list items, ...)
-  Triggers: "connector namespace", "connector", "create trigger", "trigger config", "webhook trigger",
-  "recurrence trigger", "schedule trigger", "on new email", "on new file",
-  "on new item", "on form response", "callback url", "notification url",
-  "mcp", "mcp server", "mcp tools", "model context protocol",
-  "send email", "post teams message", "upload to onedrive", "automate"
+  - Exposing connector operations as MCP tools at a namespace endpoint
+  - Calling connector APIs (send email, post Teams message, upload files)
+  Triggers: "connector namespace", "connector", "trigger config", "webhook trigger",
+  "recurrence trigger", "on new email", "callback url",
+  "mcp", "send email", "post teams message"
 ---
 
 # Azure Connector Namespace (generic)
