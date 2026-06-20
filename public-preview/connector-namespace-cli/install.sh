@@ -7,7 +7,7 @@
 #
 #   # Pin a different version:
 #   curl -fsSL https://aka.ms/connector-namespace-cli-install \
-#     | CONNECTOR_NAMESPACE_VERSION=1.0.0b9 sh
+#     | CONNECTOR_NAMESPACE_VERSION=1.0.0b33 sh
 #
 #   # Uninstall:
 #   curl -fsSL https://aka.ms/connector-namespace-cli-install \
@@ -64,7 +64,7 @@ fi
 
 # Download the wheel to a temp dir, then install from the local file.
 # (aka.ms is a redirect, so download first rather than pass the URL to az.)
-# The file name must keep the real wheel name (e.g. connector_namespace-1.0.0b9-py3-none-any.whl)
+# The file name must keep the real wheel name (e.g. connector_namespace-1.0.0b33-py3-none-any.whl)
 # because 'az extension add' parses the extension name/version from it.
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT

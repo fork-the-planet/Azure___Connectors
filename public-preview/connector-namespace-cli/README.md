@@ -51,10 +51,10 @@ If you don't want to run a remote script, install the wheel directly from the Gi
 
 ```bash
 az extension add --upgrade --yes --source \
-    https://github.com/Azure/Connectors/releases/download/v1.0.0b9/connector_namespace-1.0.0b9-py3-none-any.whl
+    https://github.com/Azure/Connectors/releases/download/v1.0.0b33/connector_namespace-1.0.0b33-py3-none-any.whl
 ```
 
-For other versions, swap `v1.0.0b9` / `1.0.0b9` for the version you want — every release tag publishes a matching `connector_namespace-<VERSION>-py3-none-any.whl` asset.
+For other versions, swap `v1.0.0b33` / `1.0.0b33` for the version you want — every release tag publishes a matching `connector_namespace-<VERSION>-py3-none-any.whl` asset.
 
 ---
 

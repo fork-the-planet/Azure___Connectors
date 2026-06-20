@@ -5,7 +5,7 @@
 #   irm https://aka.ms/connector-namespace-cli-install-ps | iex
 #
 #   # Pin a different version:
-#   & ([scriptblock]::Create((irm https://aka.ms/connector-namespace-cli-install-ps))) -Version 1.0.0b9
+#   & ([scriptblock]::Create((irm https://aka.ms/connector-namespace-cli-install-ps))) -Version 1.0.0b33
 #
 #   # Uninstall:
 #   & ([scriptblock]::Create((irm https://aka.ms/connector-namespace-cli-install-ps))) -Uninstall
@@ -61,7 +61,7 @@ Write-Host ""
 
 # Download the wheel to a temp dir, then install from the local file.
 # (aka.ms is a redirect, so download first rather than pass the URL to az.)
-# The file name must keep the real wheel name (e.g. connector_namespace-1.0.0b9-py3-none-any.whl)
+# The file name must keep the real wheel name (e.g. connector_namespace-1.0.0b33-py3-none-any.whl)
 # because 'az extension add' parses the extension name/version from it.
 $tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("connector-namespace-" + [System.Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmpDir | Out-Null
