@@ -2,7 +2,7 @@
 
 Reference documentation for the `connector-namespace` Azure CLI extension. Covers installation, every command group, authentication, argument shapes, and every error message we know about. Each section is independent — jump to whichever topic you need.
 
-> Verified against `connector-namespace 1.0.0b9`. Every snippet was executed before being pasted.
+> Verified against `connector-namespace 1.0.0b33`. Every snippet was executed before being pasted.
 
 ## Contents
 
@@ -49,7 +49,7 @@ irm https://aka.ms/connector-namespace-cli-install-ps | iex
 ```bash
 # Direct from the GitHub Release asset
 az extension add --upgrade --yes --source \
-    https://github.com/Azure/Connectors/releases/download/v1.0.0b9/connector_namespace-1.0.0b9-py3-none-any.whl
+    https://github.com/Azure/Connectors/releases/download/v1.0.0b33/connector_namespace-1.0.0b33-py3-none-any.whl
 ```
 
 ### Uninstall
@@ -68,7 +68,7 @@ curl -fsSL https://aka.ms/connector-namespace-cli-install | sh -s -- --uninstall
 az extension show --name connector-namespace --query "{name:name, version:version, preview:preview}" -o table
 # Name                 Version   Preview
 # -------------------  --------  ---------
-# connector-namespace  1.0.0b9   True
+# connector-namespace  1.0.0b33   True
 
 az connector-namespace --help
 ```
