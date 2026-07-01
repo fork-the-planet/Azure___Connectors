@@ -7,8 +7,8 @@ This repository publishes public preview connector artifacts through GitHub Rele
 Releases are tag-based:
 
 - Release tags use the `v<version>` shape, for example `v1.0.0b33`.
-- GitHub automatically exposes a source-code zip for each tag. A downloaded archive such as `Connectors-1.0.0b33.zip` is a zip of repository content under a top-level `Connectors-<version>/` folder.
-- The release workflow also uploads an explicit `Connectors-<version>.zip` source archive plus a `.sha256` file so the artifact, checksum, workflow run, and attestation are all visible in the release.
+- GitHub automatically exposes source-code archives for each tag; their download names and internal top-level folder names are controlled by GitHub.
+- The release workflow also uploads an explicit deterministic `Connectors-<version>.zip` source archive plus a `.sha256` file so the artifact, checksum, workflow run, and attestation are all visible in the release.
 
 Do not create disposable `v*` tags for testing. Release tags are protected and are expected to represent real preview artifacts.
 

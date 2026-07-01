@@ -303,8 +303,24 @@ jobs:
           echo "${tag_json}" | jq '{ref, object}'
           tag_sha="$(echo "${tag_json}" | jq -r '.object.sha')"
           tag_type="$(echo "${tag_json}" | jq -r '.object.type')"
+          tag_target_sha="${tag_sha}"
 
-          if [[ "${tag_type}" == "commit" && "${tag_sha}" != "${TARGET_SHA}" ]]; then
-            echo "Release tag points to ${tag_sha}, expected ${TARGET_SHA}" >&2
+          if [[ "${tag_type}" == "tag" ]]; then
+            tag_object_json="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_sha}")"
+            echo "${tag_object_json}" | jq '{tag_object_sha: .sha, object}'
+            tag_target_sha="$(echo "${tag_object_json}" | jq -r '.object.sha')"
+            tag_target_type="$(echo "${tag_object_json}" | jq -r '.object.type')"
+
+            if [[ "${tag_target_type}" != "commit" ]]; then
+              echo "Annotated release tag points to ${tag_target_type}, expected commit" >&2
+              exit 1
+            fi
+          elif [[ "${tag_type}" != "commit" ]]; then
+            echo "Release tag object type is ${tag_type}, expected commit or annotated tag" >&2
+            exit 1
+          fi
+
+          if [[ "${tag_target_sha}" != "${TARGET_SHA}" ]]; then
+            echo "Release tag points to ${tag_target_sha}, expected ${TARGET_SHA}" >&2
             exit 1
           fi
