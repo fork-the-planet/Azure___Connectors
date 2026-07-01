@@ -43,6 +43,7 @@ jobs:
         id: inputs
         env:
           VERSION: ${{ inputs.version }}
+          TARGET_REF: ${{ inputs.target_ref }}
           NOTES_START_TAG: ${{ inputs.notes_start_tag }}
           PRERELEASE: ${{ inputs.prerelease }}
         shell: bash
@@ -56,6 +57,11 @@ jobs:
 
           if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?$ ]]; then
             echo "version must look like 1.0.0 or 1.0.0b34 and must not include a leading v" >&2
+            exit 1
+          fi
+
+          if [[ -z "${TARGET_REF}" || ! "${TARGET_REF}" =~ ^[A-Za-z0-9._/-]+$ || "${TARGET_REF}" == *..* || "${TARGET_REF}" == /* || "${TARGET_REF}" == */ || "${TARGET_REF}" == *//* ]]; then
+            echo "target_ref may contain only letters, numbers, '.', '_', '-', and '/', and must not contain '..', '//', or leading/trailing '/'" >&2
             exit 1
           fi
 
@@ -111,7 +117,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          target_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${TARGET_REF}")"
+          encoded_target_ref="$(jq -rn --arg ref "${TARGET_REF}" '$ref|@uri')"
+          target_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${encoded_target_ref}")"
           target_sha="$(echo "${target_json}" | jq -r '.sha')"
           compare_json="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${target_sha}...main")"
           status="$(echo "${compare_json}" | jq -r '.status')"
