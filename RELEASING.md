@@ -61,7 +61,16 @@ Before running the workflow:
 4. Confirm the requested `version` matches the wheel metadata.
 5. Confirm `target_ref` points to the repository commit that should own the release tag.
 
-The release job uses the `release` environment. Configure that environment with required reviewers before relying on it as an approval gate.
+The release job uses the `release` environment. This is the native GitHub Actions approval hook, but it is only an actual approval gate after the repository environment is configured.
+
+Required environment setting:
+
+- Environment name: `release`
+- Required reviewers: a small maintainer/release-owner team, for example `@Azure/azure-connectors-contributors` until a narrower release-owner team exists
+- Prevent self-review: enabled, if available in the repository UI
+- Deployment branches: restrict to `main`, or protected branches that include `main`
+
+A configuration attempt from the audit session failed with `Must have admin rights to Repository`, so an admin/JIT owner must create or update this environment before the workflow is used for production release validation.
 
 ## Why the workflow is safer
 
