@@ -26,7 +26,7 @@ After publishing a release, verify:
 ```powershell
 gh api repos/Azure/Connectors/releases/tags/v<version>
 gh api repos/Azure/Connectors/git/ref/tags/v<version>
-gh api repos/Azure/Connectors/rulesets/18361079
+gh api repos/Azure/Connectors/rulesets --jq '.[] | select(.target == "tag") | {name, enforcement, conditions, rules}'
 gh api repos/Azure/Connectors/environments/release
 ```
 
@@ -79,9 +79,11 @@ Example command shape:
 ```powershell
 git archive --format=zip --prefix="Connectors-<version>/" --output="Connectors-<version>.zip" <commit-sha>
 Get-FileHash -Algorithm SHA256 .\Connectors-<version>.zip
+git tag v<version> <commit-sha>
+git push origin v<version>
 gh release create v<version> `
   --repo Azure/Connectors `
-  --target <commit-sha> `
+  --verify-tag `
   --title "v<version> (preview)" `
   --prerelease `
   --latest=false `
@@ -90,7 +92,7 @@ gh release create v<version> `
   .\Connectors-<version>.zip.sha256
 ```
 
-`gh release create` has no dry-run mode. If the tag does not already exist, it creates the tag automatically unless `--verify-tag` is supplied.
+`gh release create` has no dry-run mode. The fallback command uses `--verify-tag` so it fails instead of creating an unintended tag.
 
 ## When additional build provenance is needed
 

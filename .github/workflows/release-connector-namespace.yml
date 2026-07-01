@@ -67,13 +67,21 @@ jobs:
           tag="v${VERSION}"
           archive_name="Connectors-${VERSION}.zip"
           archive_prefix="Connectors-${VERSION}/"
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            prerelease_flag="--prerelease"
+            release_title="${tag} (preview)"
+          else
+            prerelease_flag=""
+            release_title="${tag}"
+          fi
 
           {
             echo "version=${VERSION}"
             echo "tag=${tag}"
             echo "archive_name=${archive_name}"
             echo "archive_prefix=${archive_prefix}"
-            echo "prerelease_flag=$([[ "${PRERELEASE}" == "true" ]] && echo --prerelease || true)"
+            echo "prerelease_flag=${prerelease_flag}"
+            echo "release_title=${release_title}"
           } >> "${GITHUB_OUTPUT}"
 
       - name: Ensure release tag does not already exist
@@ -141,7 +149,7 @@ jobs:
           mkdir -p dist
           git archive --format=zip --prefix="${ARCHIVE_PREFIX}" --output="dist/${ARCHIVE_NAME}" HEAD
 
-          python - <<'PY'
+          python3 - <<'PY'
           import os
           import pathlib
           import zipfile
@@ -238,6 +246,7 @@ jobs:
           TARGET_SHA: ${{ steps.target.outputs.target_sha }}
           ARCHIVE_NAME: ${{ steps.inputs.outputs.archive_name }}
           PRERELEASE_FLAG: ${{ steps.inputs.outputs.prerelease_flag }}
+          RELEASE_TITLE: ${{ steps.inputs.outputs.release_title }}
         shell: bash
         run: |
           set -euo pipefail
@@ -247,7 +256,7 @@ jobs:
             "dist/${ARCHIVE_NAME}.sha256" \
             --repo "${GITHUB_REPOSITORY}" \
             --target "${TARGET_SHA}" \
-            --title "${TAG} (preview)" \
+            --title "${RELEASE_TITLE}" \
             --latest=false \
             --fail-on-no-commits \
             --notes-file release-notes.md \
