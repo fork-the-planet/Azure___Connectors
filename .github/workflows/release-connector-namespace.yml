@@ -58,6 +58,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Run this release workflow from the main branch so the workflow file itself has passed normal review." >&2
+            exit 1
+          fi
+
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?$ ]]; then
             echo "version must look like 1.0.0 or 1.0.0b34 and must not include a leading v" >&2
             exit 1
@@ -105,6 +110,25 @@ jobs:
             echo "Tag $TAG already exists. Refusing to attach a new release to an existing protected tag." >&2
             exit 1
           fi
+      - name: Verify target ref is on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REF: ${{ inputs.target_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          target_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${TARGET_REF}")"
+          target_sha="$(echo "$target_json" | jq -r '.sha')"
+          compare_json="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${target_sha}...main")"
+          status="$(echo "$compare_json" | jq -r '.status')"
+
+          if [[ "$status" != "identical" && "$status" != "ahead" ]]; then
+            echo "target_ref ${TARGET_REF} (${target_sha}) is not reachable from main. Release tags must point at reviewed main history." >&2
+            exit 1
+          fi
+
+          echo "target_sha=${target_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Download and validate wheel
         env:
