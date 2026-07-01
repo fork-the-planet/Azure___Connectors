@@ -1,0 +1,333 @@
+name: Release Connectors source archive
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without leading v, for example 1.0.0b34"
+        required: true
+        type: string
+      target_ref:
+        description: "Azure/Connectors ref or commit for the release tag"
+        required: true
+        default: "main"
+        type: string
+      notes_start_tag:
+        description: "Previous release tag for generated notes, for example v1.0.0b33"
+        required: false
+        type: string
+      prerelease:
+        description: "Mark the GitHub Release as a prerelease"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-connectors-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Publish Connectors source archive release
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 30
+
+    steps:
+      - name: Validate release inputs
+        id: inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_REF: ${{ inputs.target_ref }}
+          NOTES_START_TAG: ${{ inputs.notes_start_tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "Run this release workflow from the main branch so the workflow file itself has passed normal review." >&2
+            exit 1
+          fi
+
+          if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?$ ]]; then
+            echo "version must look like 1.0.0 or 1.0.0b34 and must not include a leading v" >&2
+            exit 1
+          fi
+
+          if [[ -z "${TARGET_REF}" || ! "${TARGET_REF}" =~ ^[A-Za-z0-9._/-]+$ || "${TARGET_REF}" == *..* || "${TARGET_REF}" == /* || "${TARGET_REF}" == */ || "${TARGET_REF}" == *//* ]]; then
+            echo "target_ref may contain only letters, numbers, '.', '_', '-', and '/', and must not contain '..', '//', or leading/trailing '/'" >&2
+            exit 1
+          fi
+
+          if [[ -n "${NOTES_START_TAG}" && ! "${NOTES_START_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?$ ]]; then
+            echo "notes_start_tag must look like v1.0.0 or v1.0.0b33" >&2
+            exit 1
+          fi
+
+          tag="v${VERSION}"
+          archive_name="Connectors-${VERSION}.zip"
+          archive_prefix="Connectors-${VERSION}/"
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            prerelease_flag="--prerelease"
+            release_title="${tag} (preview)"
+          else
+            prerelease_flag=""
+            release_title="${tag}"
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "tag=${tag}"
+            echo "archive_name=${archive_name}"
+            echo "archive_prefix=${archive_prefix}"
+            echo "prerelease_flag=${prerelease_flag}"
+            echo "release_title=${release_title}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Ensure release tag does not already exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.inputs.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists. Refusing to replace an immutable release." >&2
+            exit 1
+          fi
+
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists. Refusing to attach a new release to an existing protected tag." >&2
+            exit 1
+          fi
+
+      - name: Verify target ref is on main
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REF: ${{ inputs.target_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          encoded_target_ref="$(jq -rn --arg ref "${TARGET_REF}" '$ref|@uri')"
+          target_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${encoded_target_ref}")"
+          target_sha="$(echo "${target_json}" | jq -r '.sha')"
+          compare_json="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${target_sha}...main")"
+          status="$(echo "${compare_json}" | jq -r '.status')"
+
+          if [[ "${status}" != "identical" && "${status}" != "ahead" ]]; then
+            echo "target_ref ${TARGET_REF} (${target_sha}) is not reachable from main. Release tags must point at reviewed main history." >&2
+            exit 1
+          fi
+
+          echo "target_sha=${target_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout target commit
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ steps.target.outputs.target_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build source archive
+        id: archive
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.target_sha }}
+          ARCHIVE_NAME: ${{ steps.inputs.outputs.archive_name }}
+          ARCHIVE_PREFIX: ${{ steps.inputs.outputs.archive_prefix }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          actual_sha="$(git rev-parse HEAD)"
+          if [[ "${actual_sha}" != "${TARGET_SHA}" ]]; then
+            echo "Checked-out commit ${actual_sha} does not match target ${TARGET_SHA}" >&2
+            exit 1
+          fi
+
+          mkdir -p dist
+          git archive --format=zip --prefix="${ARCHIVE_PREFIX}" --output="dist/${ARCHIVE_NAME}" HEAD
+
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import zipfile
+
+          archive_path = pathlib.Path("dist") / os.environ["ARCHIVE_NAME"]
+          prefix = os.environ["ARCHIVE_PREFIX"]
+          required = {
+              prefix,
+              prefix + "README.md",
+              prefix + "SECURITY.md",
+              prefix + "SUPPORT.md",
+              prefix + "marketplace.json",
+              prefix + ".github/CODEOWNERS",
+              prefix + ".github/workflows/codeql.yml",
+              prefix + "plugin/skills/connectors/SKILL.md",
+              prefix + "plugin/skills/aca-sandboxes/SKILL.md",
+          }
+
+          with zipfile.ZipFile(archive_path) as archive:
+              names = set(archive.namelist())
+
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit("Archive is missing expected repo entries: " + ", ".join(missing))
+
+          forbidden_suffixes = (".whl", ".nupkg", ".tgz")
+          forbidden = sorted(name for name in names if name.endswith(forbidden_suffixes))
+          if forbidden:
+              raise SystemExit("Source archive unexpectedly contains package artifacts: " + ", ".join(forbidden[:10]))
+
+          outside_prefix = sorted(name for name in names if not name.startswith(prefix))
+          if outside_prefix:
+              raise SystemExit("Archive contains entries outside expected prefix: " + ", ".join(outside_prefix[:10]))
+          PY
+
+          archive_sha256="$(sha256sum "dist/${ARCHIVE_NAME}" | awk '{print tolower($1)}')"
+          printf '%s  %s\n' "${archive_sha256}" "${ARCHIVE_NAME}" > "dist/${ARCHIVE_NAME}.sha256"
+
+          {
+            echo "archive_path=dist/${ARCHIVE_NAME}"
+            echo "archive_sha256=${archive_sha256}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Attest source archive
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: ${{ steps.archive.outputs.archive_path }}
+
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.inputs.outputs.tag }}
+          TARGET_SHA: ${{ steps.target.outputs.target_sha }}
+          NOTES_START_TAG: ${{ inputs.notes_start_tag }}
+          ARCHIVE_NAME: ${{ steps.inputs.outputs.archive_name }}
+          ARCHIVE_SHA256: ${{ steps.archive.outputs.archive_sha256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          request_file="$(mktemp)"
+          if [[ -n "${NOTES_START_TAG}" ]]; then
+            jq -n --arg tag "${TAG}" --arg target "${TARGET_SHA}" --arg previous "${NOTES_START_TAG}" \
+              '{tag_name:$tag,target_commitish:$target,previous_tag_name:$previous}' > "${request_file}"
+          else
+            jq -n --arg tag "${TAG}" --arg target "${TARGET_SHA}" \
+              '{tag_name:$tag,target_commitish:$target}' > "${request_file}"
+          fi
+
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            --input "${request_file}" \
+            --jq '.body' > release-notes.generated.md
+
+          {
+            echo "Release artifact: ${ARCHIVE_NAME}"
+            echo
+            echo "Source commit: ${TARGET_SHA}"
+            echo
+            echo "SHA-256:"
+            echo
+            echo '```text'
+            cat "dist/${ARCHIVE_NAME}.sha256"
+            echo '```'
+            echo
+            echo "This source archive is built from reviewed repository content by GitHub Actions and attested by the workflow run."
+            echo
+            cat release-notes.generated.md
+          } > release-notes.md
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.inputs.outputs.tag }}
+          TARGET_SHA: ${{ steps.target.outputs.target_sha }}
+          ARCHIVE_NAME: ${{ steps.inputs.outputs.archive_name }}
+          PRERELEASE_FLAG: ${{ steps.inputs.outputs.prerelease_flag }}
+          RELEASE_TITLE: ${{ steps.inputs.outputs.release_title }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh release create "${TAG}" \
+            "dist/${ARCHIVE_NAME}" \
+            "dist/${ARCHIVE_NAME}.sha256" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${TARGET_SHA}" \
+            --title "${RELEASE_TITLE}" \
+            --latest=false \
+            --fail-on-no-commits \
+            --notes-file release-notes.md \
+            ${PRERELEASE_FLAG}
+
+      - name: Read back release protections
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.inputs.outputs.tag }}
+          TARGET_SHA: ${{ steps.target.outputs.target_sha }}
+          ARCHIVE_NAME: ${{ steps.inputs.outputs.archive_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}")"
+          echo "${release_json}" | jq '{tag_name, draft, prerelease, immutable, target_commitish, assets: [.assets[].name]}'
+
+          immutable="$(echo "${release_json}" | jq -r '.immutable')"
+          draft="$(echo "${release_json}" | jq -r '.draft')"
+          assets="$(echo "${release_json}" | jq -r '[.assets[].name] | join("\n")')"
+
+          if [[ "${draft}" != "false" ]]; then
+            echo "Published release unexpectedly reports draft=${draft}" >&2
+            exit 1
+          fi
+
+          if [[ "${immutable}" != "true" ]]; then
+            echo "Published release did not report immutable=true" >&2
+            exit 1
+          fi
+
+          if ! grep -Fxq "${ARCHIVE_NAME}" <<< "${assets}"; then
+            echo "Published release is missing ${ARCHIVE_NAME}" >&2
+            exit 1
+          fi
+
+          if ! grep -Fxq "${ARCHIVE_NAME}.sha256" <<< "${assets}"; then
+            echo "Published release is missing ${ARCHIVE_NAME}.sha256" >&2
+            exit 1
+          fi
+
+          tag_json="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")"
+          echo "${tag_json}" | jq '{ref, object}'
+          tag_sha="$(echo "${tag_json}" | jq -r '.object.sha')"
+          tag_type="$(echo "${tag_json}" | jq -r '.object.type')"
+          tag_target_sha="${tag_sha}"
+
+          if [[ "${tag_type}" == "tag" ]]; then
+            tag_object_json="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_sha}")"
+            echo "${tag_object_json}" | jq '{tag_object_sha: .sha, object}'
+            tag_target_sha="$(echo "${tag_object_json}" | jq -r '.object.sha')"
+            tag_target_type="$(echo "${tag_object_json}" | jq -r '.object.type')"
+
+            if [[ "${tag_target_type}" != "commit" ]]; then
+              echo "Annotated release tag points to ${tag_target_type}, expected commit" >&2
+              exit 1
+            fi
+          elif [[ "${tag_type}" != "commit" ]]; then
+            echo "Release tag object type is ${tag_type}, expected commit or annotated tag" >&2
+            exit 1
+          fi
+
+          if [[ "${tag_target_sha}" != "${TARGET_SHA}" ]]; then
+            echo "Release tag points to ${tag_target_sha}, expected ${TARGET_SHA}" >&2
+            exit 1
+          fi
