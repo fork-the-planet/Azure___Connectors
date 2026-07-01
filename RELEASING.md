@@ -34,7 +34,7 @@ Expected evidence:
 
 - The release exists and is not a draft.
 - Preview releases use `prerelease=true`.
-- New releases should report `immutable=true`.
+- New releases must report `immutable=true`.
 - The release contains `Connectors-<version>.zip` and `Connectors-<version>.zip.sha256` assets.
 - The tag ref points to the intended commit or annotated tag object.
 - The tag ruleset remains active for `refs/tags/v*` with `deletion` and `non_fast_forward` rules.
@@ -70,29 +70,11 @@ The source archive workflow applies to this repository because the release conte
 
 If future releases include a generated wheel or package again, the wheel source and deterministic build must be added to this repository or to another trusted workflow. Do not publish opaque externally built wheels as KPI-compliant artifacts.
 
-## Manual release fallback
+## No manual release fallback
 
-Manual publishing should be treated as break-glass. Until the release workflow is fully adopted, a maintainer may publish a release manually only when the release workflow is unavailable and the same source archive, checksum, release tag, and immutability evidence can be reproduced and recorded.
+Do not publish releases manually through the GitHub UI or `gh release create`. The approved path is the release workflow because it is reviewed, environment-gated, checksummed, attested, and validated after publication.
 
-Example command shape:
-
-```powershell
-git archive --format=zip --prefix="Connectors-<version>/" --output="Connectors-<version>.zip" <commit-sha>
-Get-FileHash -Algorithm SHA256 .\Connectors-<version>.zip
-git tag v<version> <commit-sha>
-git push origin v<version>
-gh release create v<version> `
-  --repo Azure/Connectors `
-  --verify-tag `
-  --title "v<version> (preview)" `
-  --prerelease `
-  --latest=false `
-  --notes-file <release-notes.md> `
-  .\Connectors-<version>.zip `
-  .\Connectors-<version>.zip.sha256
-```
-
-`gh release create` has no dry-run mode. The fallback command uses `--verify-tag` so it fails instead of creating an unintended tag.
+GitHub release environments protect workflow deployments; they do not, by themselves, gate direct UI or API release creation. If a stronger technical block is required, combine least-privilege repository access with release-tag creation restrictions that still allow the approved workflow identity to create release tags. Until that is configured, manual release publishing remains prohibited by repo process.
 
 ## When additional build provenance is needed
 
