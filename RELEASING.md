@@ -1,6 +1,6 @@
 # Releasing
 
-This repository currently publishes public preview connector artifacts through GitHub Releases.
+This repository publishes public preview connector artifacts through GitHub Releases.
 
 ## Current release model
 
@@ -36,31 +36,51 @@ Expected evidence:
 - The tag ref points to the intended commit or annotated tag object.
 - The tag ruleset remains active for `refs/tags/v*` with `deletion` and `non_fast_forward` rules.
 
-## Preferred release process
+## Release workflow
+
+Use the **Release connector namespace CLI** workflow for new wheel releases.
+
+The workflow publishes the release with `GITHUB_TOKEN` instead of an individual account. It validates the requested version, release tag, wheel file name, wheel SHA-256, and wheel package metadata before creating the GitHub Release. After publication, it reads back the release and fails if the new release does not report `immutable=true`.
+
+Required workflow inputs:
+
+| Input | Purpose |
+| --- | --- |
+| `version` | Package version without a leading `v`, for example `1.0.0b34` |
+| `target_ref` | Azure/Connectors ref or commit used for the release tag |
+| `wheel_url` | HTTPS URL for `connector_namespace-<version>-py3-none-any.whl` from the approved build |
+| `wheel_sha256` | Expected SHA-256 for the wheel |
+| `notes_start_tag` | Previous release tag used for generated notes |
+| `prerelease` | Whether the GitHub Release should be marked as a prerelease |
+
+Before running the workflow:
+
+1. Produce the wheel from the owner-approved connector namespace CLI build.
+2. Record the source/build run that produced the wheel.
+3. Compute and review the wheel SHA-256.
+4. Confirm the requested `version` matches the wheel metadata.
+5. Confirm `target_ref` points to the repository commit that should own the release tag.
+
+The release job uses the `release` environment. Configure that environment with required reviewers before relying on it as an approval gate.
+
+## Why the workflow is safer
 
 A workflow-backed release is safer than publishing artifacts from an individual account because it gives the repo a repeatable managed identity, auditable logs, constrained permissions, and a path to provenance or attestation.
 
-The preferred future process is:
+This repository currently does not contain the generated `azext_connector_namespace` source that appears inside the published wheel. Until that source and build are available in this repository, the release workflow cannot truthfully claim to build the wheel from local source. The current workflow therefore treats the wheel as an input from the approved build and validates it before publication.
 
-1. Build the wheel in GitHub Actions from the selected commit.
-2. Create the release as a draft.
-3. Upload all assets while the release is still a draft.
-4. Publish the release only after all assets are attached.
-5. Read back the release, tag, and asset metadata.
+The stronger future state is:
 
-A release workflow should use least-privilege permissions, for example:
-
-```yaml
-permissions:
-  contents: write
-  id-token: write
-```
-
-Use `contents: write` only for the release job that creates the tag or release. Use `id-token: write` only if provenance, artifact attestations, or trusted publishing are enabled.
+1. Build the wheel in GitHub Actions from pinned, repository-owned source.
+2. Create provenance or artifact attestations for that build.
+3. Create the release as a draft.
+4. Upload all assets while the release is still a draft.
+5. Publish the release only after all assets are attached.
+6. Read back the release, tag, asset, and immutability metadata.
 
 ## Manual release fallback
 
-Until a release workflow exists, a maintainer may publish a release manually only after producing the expected wheel asset from the owner-approved build process.
+Manual publishing should be treated as break-glass. Until the release workflow is fully adopted, a maintainer may publish a release manually only after producing the expected wheel asset from the owner-approved build process.
 
 Example command shape:
 
@@ -79,6 +99,6 @@ gh release create v<version> `
 
 ## When a release workflow applies
 
-A release workflow does apply to this repository for any generated artifact such as the connector namespace wheel. The repository also contains documentation and plugin skill content; those files alone do not require a package publishing workflow. The wheel asset does.
+A release workflow applies to this repository for generated artifacts such as the connector namespace wheel. The repository also contains documentation and plugin skill content; those files alone do not require package publishing automation. The wheel asset does.
 
 If a future release contains only documentation or plugin skill text with no generated artifact, the release owner should decide whether a GitHub Release is needed at all. If a GitHub Release is used, keep the same tag and immutability validation steps.
